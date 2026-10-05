@@ -61,10 +61,10 @@ textarea {
   width: min(100%, 1280px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: clamp(18px, 2.5vw, 30px) clamp(14px, 3vw, 28px)
-    clamp(26px, 3vw, 34px);
+  padding: clamp(calc(18px * var(--content-scale, 1)), 2.5vw, calc(30px * var(--content-scale, 1))) clamp(calc(14px * var(--content-scale, 1)), 3vw, calc(28px * var(--content-scale, 1)))
+    clamp(calc(26px * var(--content-scale, 1)), 3vw, calc(34px * var(--content-scale, 1)));
   overflow: hidden;
-  margin-top: 60px;
+  margin-top: calc(60px * var(--content-scale, 1));
 }
 
 /* ---------- BACKGROUND DECORATION ---------- */
@@ -99,35 +99,35 @@ textarea {
   position: relative;
   z-index: 1;
   width: min(100%, 1280px);
-  margin: 0 auto 20px;
+  margin: 0 auto calc(20px * var(--content-scale, 1));
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 15px;
-  padding: 0 5px;
+  gap: calc(15px * var(--content-scale, 1));
+  padding: 0 calc(5px * var(--content-scale, 1));
 }
 
 .top-header h1 {
   margin: 0;
   color: var(--primary-dark);
-  font-size: clamp(26px, 2.5vw, 36px);
+  font-size: calc((clamp(26px, 2.5vw, 36px)) * var(--font-scale, 1));
   line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.8px;
 }
 
 .top-header p {
-  margin: 6px 0 0;
+  margin: calc(6px * var(--content-scale, 1)) 0 0;
   color: var(--muted);
-  font-size: clamp(10px, 0.8vw, 13px);
+  font-size: calc((clamp(10px, 0.8vw, 13px)) * var(--font-scale, 1));
   line-height: 1.4;
 }
 
 .header-user {
-  padding-top: 8px;
+  padding-top: calc(8px * var(--content-scale, 1));
   color: var(--primary-dark);
-  font-size: clamp(11px, 0.9vw, 14px);
+  font-size: calc((clamp(11px, 0.9vw, 14px)) * var(--font-scale, 1));
   font-weight: 700;
 }
 
@@ -138,7 +138,7 @@ textarea {
   z-index: 1;
   width: min(100%, 1280px);
   margin: 0 auto;
-  padding: clamp(24px, 3vw, 38px) clamp(24px, 4vw, 52px) 25px;
+  padding: clamp(calc(24px * var(--content-scale, 1)), 3vw, calc(38px * var(--content-scale, 1))) clamp(calc(24px * var(--content-scale, 1)), 4vw, calc(52px * var(--content-scale, 1))) calc(25px * var(--content-scale, 1));
 
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--border);
@@ -152,21 +152,21 @@ textarea {
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: clamp(16px, 2vw, 25px);
+  gap: clamp(calc(16px * var(--content-scale, 1)), 2vw, calc(25px * var(--content-scale, 1)));
 }
 
 /* ---------- FORM GROUP ---------- */
 
 .form-group {
   min-width: 0;
-  margin-bottom: clamp(14px, 1.5vw, 20px);
+  margin-bottom: clamp(calc(14px * var(--content-scale, 1)), 1.5vw, calc(20px * var(--content-scale, 1)));
 }
 
 .form-group label {
   display: block;
-  margin: 0 0 7px 2px;
+  margin: 0 0 calc(7px * var(--content-scale, 1)) calc(2px * var(--content-scale, 1));
   color: var(--text-dark);
-  font-size: clamp(11px, 0.8vw, 13px);
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1));
   font-weight: 700;
 }
 
@@ -192,8 +192,8 @@ textarea {
 .form-group input,
 .form-group select {
   height: clamp(40px, 3vw, 48px);
-  padding: 0 clamp(11px, 1vw, 15px);
-  font-size: clamp(11px, 0.8vw, 13px);
+  padding: 0 clamp(calc(11px * var(--content-scale, 1)), 1vw, calc(15px * var(--content-scale, 1)));
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1));
 }
 
 .form-group input::placeholder {
@@ -219,7 +219,7 @@ textarea {
 
 .section-title {
   height: clamp(34px, 3vw, 42px);
-  margin: 8px 0 clamp(14px, 1.5vw, 20px);
+  margin: calc(8px * var(--content-scale, 1)) 0 clamp(calc(14px * var(--content-scale, 1)), 1.5vw, calc(20px * var(--content-scale, 1)));
 
   border-top: 2px solid #cbd9e2;
 
@@ -228,7 +228,7 @@ textarea {
   justify-content: center;
 
   color: var(--primary-dark);
-  font-size: clamp(11px, 0.8vw, 13px);
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1));
   font-weight: 800;
   letter-spacing: 0.3px;
 }
@@ -253,15 +253,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* ---------- DESCRIPTION ---------- */
 
 .description-group {
-  margin-top: 3px;
+  margin-top: calc(3px * var(--content-scale, 1));
 }
 
 .description-group textarea {
   min-height: 110px;
   height: clamp(100px, 9vw, 145px);
-  padding: 11px 13px;
+  padding: calc(11px * var(--content-scale, 1)) calc(13px * var(--content-scale, 1));
   resize: vertical;
-  font-size: clamp(11px, 0.8vw, 13px);
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1));
   line-height: 1.5;
 }
 
@@ -272,7 +272,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* ---------- UPLOAD ---------- */
 
 .upload-group {
-  margin-top: clamp(20px, 2vw, 28px);
+  margin-top: clamp(calc(20px * var(--content-scale, 1)), 2vw, calc(28px * var(--content-scale, 1)));
 }
 
 .upload-box {
@@ -328,10 +328,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 15px;
+  gap: calc(15px * var(--content-scale, 1));
 
-  margin-top: clamp(18px, 2vw, 25px);
-  padding-top: 18px;
+  margin-top: clamp(calc(18px * var(--content-scale, 1)), 2vw, calc(25px * var(--content-scale, 1)));
+  padding-top: calc(18px * var(--content-scale, 1));
 
   border-top: 1px solid var(--border-light);
 }
@@ -346,7 +346,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-radius: 8px;
 
   font-family: inherit;
-  font-size: clamp(11px, 0.8vw, 13px);
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1));
   font-weight: 700;
 
   cursor: pointer;
@@ -395,8 +395,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @media (min-width: 1400px) {
   .page {
-    padding-left: 55px;
-    padding-right: 55px;
+    padding-left: calc(55px * var(--content-scale, 1));
+    padding-right: calc(55px * var(--content-scale, 1));
   }
 
   .report-card {
@@ -414,11 +414,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .page {
     margin-left: 0;
     width: 100%;
-    padding: 25px 25px 35px;
+    padding: calc(25px * var(--content-scale, 1)) calc(25px * var(--content-scale, 1)) calc(35px * var(--content-scale, 1));
   }
 
   .report-card {
-    padding: 25px 28px 22px;
+    padding: calc(25px * var(--content-scale, 1)) calc(28px * var(--content-scale, 1)) calc(22px * var(--content-scale, 1));
     border-radius: 12px;
   }
 
@@ -442,59 +442,59 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .page {
     margin-left: 0;
     width: 100%;
-    padding: 20px 15px 30px;
+    padding: calc(20px * var(--content-scale, 1)) calc(15px * var(--content-scale, 1)) calc(30px * var(--content-scale, 1));
   }
 
   .top-header {
-    padding: 0 3px;
-    margin-bottom: 18px;
-    gap: 8px;
+    padding: 0 calc(3px * var(--content-scale, 1));
+    margin-bottom: calc(18px * var(--content-scale, 1));
+    gap: calc(8px * var(--content-scale, 1));
   }
 
   .top-header h1 {
-    font-size: 25px;
+    font-size: calc((25px) * var(--font-scale, 1));
   }
 
   .top-header p {
-    font-size: 10px;
+    font-size: calc((10px) * var(--font-scale, 1));
   }
 
   .header-user {
     width: 100%;
     padding-top: 0;
-    font-size: 11px;
+    font-size: calc((11px) * var(--font-scale, 1));
   }
 
   .report-card {
-    padding: 20px 18px 18px;
+    padding: calc(20px * var(--content-scale, 1)) calc(18px * var(--content-scale, 1)) calc(18px * var(--content-scale, 1));
     border-radius: 11px;
   }
 
   .form-group {
-    margin-bottom: 15px;
+    margin-bottom: calc(15px * var(--content-scale, 1));
   }
 
   .form-group label {
-    font-size: 11px;
-    margin-bottom: 6px;
+    font-size: calc((11px) * var(--font-scale, 1));
+    margin-bottom: calc(6px * var(--content-scale, 1));
   }
 
   .form-group input,
   .form-group select {
     height: 42px;
-    font-size: 11px;
+    font-size: calc((11px) * var(--font-scale, 1));
   }
 
   .section-title {
     height: 35px;
-    font-size: 10px;
-    margin-top: 5px;
+    font-size: calc((10px) * var(--font-scale, 1));
+    margin-top: calc(5px * var(--content-scale, 1));
   }
 
   .description-group textarea {
     height: 105px;
     min-height: 105px;
-    font-size: 11px;
+    font-size: calc((11px) * var(--font-scale, 1));
   }
 
   .upload-box {
@@ -502,15 +502,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   .form-actions {
-    margin-top: 18px;
-    padding-top: 15px;
+    margin-top: calc(18px * var(--content-scale, 1));
+    padding-top: calc(15px * var(--content-scale, 1));
   }
 
   .cancel-button,
   .submit-button {
     min-width: 95px;
     height: 40px;
-    font-size: 11px;
+    font-size: calc((11px) * var(--font-scale, 1));
   }
 }
 
@@ -518,27 +518,27 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @media (max-width: 400px) {
   .page {
-    padding: 16px 10px 25px;
+    padding: calc(16px * var(--content-scale, 1)) calc(10px * var(--content-scale, 1)) calc(25px * var(--content-scale, 1));
   }
 
   .top-header {
-    padding: 0 2px;
+    padding: 0 calc(2px * var(--content-scale, 1));
   }
 
   .top-header h1 {
-    font-size: 22px;
+    font-size: calc((22px) * var(--font-scale, 1));
   }
 
   .top-header p {
-    font-size: 9px;
+    font-size: calc((9px) * var(--font-scale, 1));
   }
 
   .header-user {
-    font-size: 10px;
+    font-size: calc((10px) * var(--font-scale, 1));
   }
 
   .report-card {
-    padding: 17px 14px 15px;
+    padding: calc(17px * var(--content-scale, 1)) calc(14px * var(--content-scale, 1)) calc(15px * var(--content-scale, 1));
     border-radius: 10px;
   }
 
@@ -567,21 +567,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @media (max-width: 330px) {
   .page {
-    padding: 13px 7px 20px;
+    padding: calc(13px * var(--content-scale, 1)) calc(7px * var(--content-scale, 1)) calc(20px * var(--content-scale, 1));
   }
 
   .top-header h1 {
-    font-size: 20px;
+    font-size: calc((20px) * var(--font-scale, 1));
   }
 
   .report-card {
-    padding: 15px 11px 13px;
+    padding: calc(15px * var(--content-scale, 1)) calc(11px * var(--content-scale, 1)) calc(13px * var(--content-scale, 1));
   }
 
   .form-group input,
   .form-group select {
     height: 38px;
-    padding: 0 9px;
+    padding: 0 calc(9px * var(--content-scale, 1));
   }
 
   .description-group textarea {
@@ -597,7 +597,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   .submit-button {
     min-width: 78px;
     height: 36px;
-    font-size: 10px;
+    font-size: calc((10px) * var(--font-scale, 1));
   }
 }
 
@@ -634,7 +634,7 @@ body {
 /* Header becomes a banner */
 .top-header {
   overflow: hidden;
-  padding: 26px 30px;
+  padding: calc(26px * var(--content-scale, 1)) calc(30px * var(--content-scale, 1));
   border-radius: 16px;
   background: linear-gradient(
     135deg,
@@ -669,8 +669,8 @@ body {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 14px 6px 6px;
+  gap: calc(10px * var(--content-scale, 1));
+  padding: calc(6px * var(--content-scale, 1)) calc(14px * var(--content-scale, 1)) calc(6px * var(--content-scale, 1)) calc(6px * var(--content-scale, 1));
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -685,7 +685,7 @@ body {
   color: var(--primary-dark);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: calc((11px) * var(--font-scale, 1));
   font-weight: 800;
 }
 
@@ -713,15 +713,15 @@ body {
 /* Section headings */
 .section-title {
   height: auto;
-  margin: 10px 0 clamp(14px, 1.5vw, 20px);
-  padding: 11px 16px;
+  margin: calc(10px * var(--content-scale, 1)) 0 clamp(calc(14px * var(--content-scale, 1)), 1.5vw, calc(20px * var(--content-scale, 1)));
+  padding: calc(11px * var(--content-scale, 1)) calc(16px * var(--content-scale, 1));
   border-top: 0;
   border-left: 4px solid var(--primary);
   border-radius: 8px;
   background: var(--primary-soft);
   justify-content: flex-start;
   align-items: center;
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: calc((clamp(11px, 0.9vw, 13px)) * var(--font-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
@@ -751,7 +751,7 @@ body {
 .form-group select {
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 38px;
+  padding-right: calc(38px * var(--content-scale, 1));
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%231769aa' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
@@ -760,7 +760,7 @@ body {
 /* Upload box */
 .upload-box {
   flex-direction: column;
-  gap: 10px;
+  gap: calc(10px * var(--content-scale, 1));
   border-color: #b7d0e0;
   background: linear-gradient(180deg, #f9fcfe, #eef5fa);
 }
@@ -779,19 +779,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: calc(2px * var(--content-scale, 1));
   text-align: center;
-  padding: 0 12px;
+  padding: 0 calc(12px * var(--content-scale, 1));
 }
 
 .upload-text strong {
   color: var(--primary-dark);
-  font-size: clamp(11px, 0.9vw, 13px);
+  font-size: calc((clamp(11px, 0.9vw, 13px)) * var(--font-scale, 1));
 }
 
 .upload-text span {
   color: var(--muted);
-  font-size: clamp(10px, 0.75vw, 12px);
+  font-size: calc((clamp(10px, 0.75vw, 12px)) * var(--font-scale, 1));
 }
 
 /* Buttons */
@@ -812,7 +812,7 @@ body {
 /* Smaller screens */
 @media (max-width: 600px) {
   .top-header {
-    padding: 18px 18px;
+    padding: calc(18px * var(--content-scale, 1)) calc(18px * var(--content-scale, 1));
     border-radius: 14px;
   }
 
@@ -821,7 +821,7 @@ body {
   }
 
   .section-title {
-    padding: 9px 12px;
+    padding: calc(9px * var(--content-scale, 1)) calc(12px * var(--content-scale, 1));
   }
 }
 

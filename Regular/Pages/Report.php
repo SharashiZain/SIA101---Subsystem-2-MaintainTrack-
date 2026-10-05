@@ -1,9 +1,11 @@
+<?php require_once '../../Components/layout.php'; ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" <?= rolePreferenceAttributes('regular') ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MaintainTrack | Report</title>
+    <link rel="stylesheet" href="../../Components/css/base.css">
     <link rel="stylesheet" href="../Components/css/Report.css">
 </head>
 

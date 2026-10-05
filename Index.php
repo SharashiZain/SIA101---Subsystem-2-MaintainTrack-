@@ -5,7 +5,7 @@ $errorMessage = $_SESSION['login_error'] ?? 'Please enter your username and pass
 unset($_SESSION['login_error']);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-font-size="<?= htmlspecialchars($_COOKIE['font_size'] ?? 'medium', ENT_QUOTES, 'UTF-8') ?>" data-content-size="<?= htmlspecialchars($_COOKIE['content_size'] ?? 'medium', ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -93,7 +93,6 @@ unset($_SESSION['login_error']);
 
     </main>
 
-    <script src="Components/js/Script.js"></script>
-
+    <script src="Components/js/RoleNavigation.js"></script>
 </body>
 </html>

@@ -1,15 +1,15 @@
 :root {
-  --nav-top: #0d3c67;
-  --nav-mid: #1465a5;
-  --nav-bottom: #1d86c9;
-  --nav-strong: #0d2f57;
+  --nav-top: #12355f;
+  --nav-mid: #1d4f91;
+  --nav-bottom: #2d6bb5;
+  --nav-strong: #0e1420;
   --nav-soft: rgba(255, 255, 255, 0.12);
-  --nav-text: #edf7ff;
+  --nav-text: #ffffff;
   --nav-muted: #cfe7fb;
   --nav-active: #ffffff;
-  --nav-active-text: #0c3d66;
+  --nav-active-text: #1d4f91;
   --nav-badge: #ff7a5c;
-  --nav-shadow: rgba(9, 33, 58, 0.2);
+  --nav-shadow: rgba(18, 53, 95, 0.2);
 }
 
 * {
@@ -21,11 +21,15 @@ body {
 }
 
 .topnav {
+  /* Locked scale: the top nav ignores the Font size and Content size settings */
+  --font-scale: 1;
+  --content-scale: 1;
+
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 72px;
+  height: 68px;
   z-index: 1000;
   background: linear-gradient(
     135deg,
@@ -33,23 +37,23 @@ body {
     var(--nav-mid) 55%,
     var(--nav-bottom) 100%
   );
-  box-shadow: 0 10px 24px var(--nav-shadow);
+  box-shadow: 0 4px 20px var(--nav-shadow);
 }
 
 .topnav-inner {
   max-width: 1400px;
   height: 100%;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 calc(20px * var(--content-scale, 1));
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: calc(18px * var(--content-scale, 1));
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(10px * var(--content-scale, 1));
   border: 0;
   background: transparent;
   color: var(--nav-text);
@@ -81,7 +85,7 @@ body {
 }
 
 .brand-text {
-  font-size: 18px;
+  font-size: calc((18px) * var(--font-scale, 1));
   font-weight: 800;
   letter-spacing: 0.02em;
 }
@@ -91,19 +95,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: calc(6px * var(--content-scale, 1));
   min-width: 0;
 }
 
 .menu-item {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
+  gap: calc(8px * var(--content-scale, 1));
+  padding: calc(9px * var(--content-scale, 1))
+    calc(12px * var(--content-scale, 1));
   border-radius: 10px;
   color: var(--nav-muted);
   text-decoration: none;
-  font-size: 13px;
+  font-size: calc((13px) * var(--font-scale, 1));
   font-weight: 700;
   transition: all 0.18s ease;
   white-space: nowrap;
@@ -145,14 +150,14 @@ body {
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 calc(5px * var(--content-scale, 1));
   border-radius: 999px;
   background: var(--nav-badge);
   color: #ffffff;
-  font-size: 10px;
+  font-size: calc((10px) * var(--font-scale, 1));
   font-weight: 800;
   line-height: 1;
-  margin-left: 2px;
+  margin-left: calc(2px * var(--content-scale, 1));
 }
 
 .profile-wrap {
@@ -162,8 +167,10 @@ body {
 .profile-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px 6px 6px;
+  gap: calc(10px * var(--content-scale, 1));
+  padding: calc(6px * var(--content-scale, 1))
+    calc(10px * var(--content-scale, 1)) calc(6px * var(--content-scale, 1))
+    calc(6px * var(--content-scale, 1));
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -185,7 +192,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: calc((11px) * var(--font-scale, 1));
   font-weight: 800;
 }
 
@@ -197,16 +204,16 @@ body {
 }
 
 .profile-summary strong {
-  font-size: 12px;
+  font-size: calc((12px) * var(--font-scale, 1));
 }
 
 .profile-summary small {
-  font-size: 10px;
+  font-size: calc((10px) * var(--font-scale, 1));
   color: var(--nav-muted);
 }
 
 .profile-chevron {
-  font-size: 11px;
+  font-size: calc((11px) * var(--font-scale, 1));
   color: var(--nav-muted);
 }
 
@@ -233,10 +240,11 @@ body {
 
 .profile-menu a {
   display: block;
-  padding: 11px 14px;
+  padding: calc(11px * var(--content-scale, 1))
+    calc(14px * var(--content-scale, 1));
   color: #17324a;
   text-decoration: none;
-  font-size: 13px;
+  font-size: calc((13px) * var(--font-scale, 1));
   font-weight: 700;
 }
 
@@ -250,8 +258,8 @@ body {
 
 @media (max-width: 980px) {
   .topnav-inner {
-    gap: 12px;
-    padding: 0 14px;
+    gap: calc(12px * var(--content-scale, 1));
+    padding: 0 calc(14px * var(--content-scale, 1));
   }
 
   .brand-text {
@@ -263,7 +271,8 @@ body {
   }
 
   .menu-item {
-    padding: 9px 10px;
+    padding: calc(9px * var(--content-scale, 1))
+      calc(10px * var(--content-scale, 1));
   }
 }
 
@@ -276,7 +285,8 @@ body {
   .topnav-inner {
     flex-wrap: wrap;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: calc(10px * var(--content-scale, 1))
+      calc(14px * var(--content-scale, 1));
   }
 
   .topnav-menu {
@@ -293,5 +303,210 @@ body {
 
   .menu-item {
     flex: 0 0 auto;
+  }
+}
+
+/* ================= REDESIGN LAYER ================= */
+
+@keyframes badgePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 92, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(255, 122, 92, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 92, 0);
+  }
+}
+
+/* ---------- BAR ---------- */
+.topnav {
+  background: linear-gradient(120deg, #0b3358 0%, #1465a5 50%, #25a0e0 100%);
+  border-radius: 0;
+  box-shadow:
+    0 14px 30px rgba(9, 33, 58, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+}
+/* dotted pattern fading in from the right (clips itself, so the dropdown stays visible) */
+.topnav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(rgba(255, 255, 255, 0.2) 1.5px, transparent 1.5px)
+    0 0 / 16px 16px;
+  -webkit-mask-image: linear-gradient(to left, #000, transparent 65%);
+  mask-image: linear-gradient(to left, #000, transparent 65%);
+  pointer-events: none;
+}
+.topnav-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- BRAND ---------- */
+.brand-mark {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.32),
+    rgba(255, 255, 255, 0.1)
+  );
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.25s ease;
+}
+.brand:hover .brand-mark {
+  transform: rotate(-8deg) scale(1.06);
+}
+.brand-text {
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* ---------- MENU ---------- */
+.topnav-menu {
+  gap: calc(8px * var(--content-scale, 1));
+}
+.menu-item {
+  position: relative;
+  padding: calc(10px * var(--content-scale, 1))
+    calc(16px * var(--content-scale, 1));
+  border-radius: 999px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.menu-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.16);
+}
+.menu-item.active {
+  box-shadow: 0 8px 18px rgba(3, 24, 42, 0.22);
+}
+/* little dot under the active page */
+.menu-item.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+.menu-badge {
+  background: linear-gradient(135deg, #ff9a7a, #ff5a3c);
+  animation: badgePulse 2s ease-out infinite;
+}
+
+/* ---------- PROFILE ---------- */
+.profile-trigger {
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.profile-trigger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+.profile-avatar {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+.profile-chevron {
+  transition: transform 0.18s ease;
+}
+.profile-trigger:hover .profile-chevron {
+  transform: translateY(2px);
+}
+
+.profile-menu {
+  border-radius: 16px;
+  padding: calc(6px * var(--content-scale, 1));
+  box-shadow: 0 16px 34px rgba(9, 33, 58, 0.25);
+}
+.profile-menu a {
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    padding-left 0.15s ease;
+}
+.profile-menu a:hover {
+  background: #eaf4fc;
+  border-left-color: #3b94d9;
+  padding-left: calc(17px * var(--content-scale, 1));
+}
+.profile-menu .logout-link:hover {
+  background: #fdeceb;
+  border-left-color: #c0392b;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 720px) {
+  .topnav {
+    border-radius: 0;
+  }
+  .menu-item {
+    padding: calc(9px * var(--content-scale, 1))
+      calc(14px * var(--content-scale, 1));
+  }
+  .menu-item.active::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-badge {
+    animation: none;
+  }
+  .brand:hover .brand-mark {
+    transform: none;
+  }
+}
+
+@media (max-width: 1120px) {
+  .topnav-inner {
+    width: 100%;
+    min-width: 0;
+    gap: calc(12px * var(--content-scale, 1));
+    padding-right: calc(14px * var(--content-scale, 1));
+    padding-left: calc(14px * var(--content-scale, 1));
+  }
+
+  .brand,
+  .profile-wrap {
+    flex: 0 0 auto;
+  }
+
+  .topnav-menu {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: calc(2px * var(--content-scale, 1));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .topnav-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topnav-menu .menu-item {
+    flex: 0 0 auto;
+    padding-right: calc(8px * var(--content-scale, 1));
+    padding-left: calc(8px * var(--content-scale, 1));
+  }
+
+  .topnav-menu .menu-item > span:not(.menu-icon):not(.menu-badge) {
+    display: none;
   }
 }

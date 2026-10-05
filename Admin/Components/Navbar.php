@@ -2,59 +2,29 @@
 /* ------------------------------------------------------------
    ADMIN NAVBAR
    ------------------------------------------------------------ */
-$userName    = 'Admin User';
-$userHandle  = 'Administrator';
-$userInitials = 'AU';
-
-$menuItems = [
-    [
-        'label' => 'Dashboard',
-        'href'  => 'Dashboard.php',
-        'icon'  => '<path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-7h6v7"></path>',
-    ],
-    [
-        'label' => 'Requests',
-        'href'  => 'Request.php',
-        'icon'  => '<path d="M4 5h16v14H4z"></path><path d="M8 12h8"></path><path d="M12 8v8"></path>',
-    ],
-    [
-        'label' => 'Assignments',
-        'href'  => 'Assignment.php',
-        'icon'  => '<circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5"></path><path d="M16 11l2 2 4-4"></path>',
-    ],
-    [
-        'label' => 'Equipment',
-        'href'  => 'Registry.php',
-        'icon'  => '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>',
-    ],
-    [
-        'label' => 'Reports',
-        'href'  => 'Report.php',
-        'icon'  => '<path d="M4 5h16v14H4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>',
-    ],
-    [
-        'label' => 'Notifications',
-        'href'  => 'Notification.php',
-        'icon'  => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path>',
-    ],
-    [
-        'label' => 'Users',
-        'href'  => 'Users.php',
-        'icon'  => '<circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5"></path><circle cx="17.5" cy="9" r="2.5"></circle><path d="M17 14.5c2.6 0 4.5 1.8 4.5 4.5"></path>',
-    ],
-];
+require_once __DIR__ . '/../../Components/layout.php';
+[$userName, $userHandle, $userInitials] = roleUser('admin');
+$menuItems = roleNavigationItems('admin');
 ?>
 
-<link rel="stylesheet" href="../Components/css/Navbar.css">
+<?php
+$adminLayout = $_COOKIE['admin_layout'] ?? 'sidebar';
+if ($adminLayout !== 'navbar') {
+    include __DIR__ . '/Sidebar.php';
+    return;
+}
+?>
 
-<header class="topnav">
+<link rel="stylesheet" href="<?= e(appAssetUrl('Admin/Components/css/Navbar.css')) ?>">
+
+<header class="topnav" data-layout-role="admin">
 
     <div class="topnav-inner">
 
         <button
             class="brand"
             type="button"
-            onclick="window.location.href='Dashboard.php'"
+            onclick="window.location.href='<?= e(rolePageUrl('admin', 'Dashboard.php')) ?>'"
         >
             <div class="brand-logo">
                 <svg viewBox="0 0 24 24">
@@ -71,6 +41,8 @@ $menuItems = [
                 <button
                     class="menu-item"
                     data-page="<?= htmlspecialchars($item['href']) ?>"
+                    data-href="<?= e(roleNavigationUrl('admin', $item['href'])) ?>"
+                    aria-label="<?= e($item['label']) ?>"
                     type="button"
                 >
                     <span class="menu-icon">
@@ -84,13 +56,9 @@ $menuItems = [
         </nav>
 
         <div class="topnav-profile-wrapper">
+            <?php renderRoleProfileMenu('admin'); ?>
 
-            <div class="profile-menu" id="profileMenu">
-                <a href="Profile.php">Edit Profile</a>
-                <a href="../../index.php" class="profile-logout">Log out</a>
-            </div>
-
-            <button class="topnav-profile" type="button" id="profileTrigger">
+            <button class="topnav-profile" type="button" id="profileTrigger" aria-expanded="false" aria-controls="profileMenu">
                 <div class="profile-avatar">
                     <?= htmlspecialchars($userInitials) ?>
                 </div>
@@ -108,4 +76,4 @@ $menuItems = [
 
 </header>
 
-<script src="../Components/js/Navbar.js"></script>
+<script src="<?= e(appAssetUrl('Components/js/RoleNavigation.js')) ?>"></script>

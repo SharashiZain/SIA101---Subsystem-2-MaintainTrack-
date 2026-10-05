@@ -1,49 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile & Account</title>
-    <link rel="stylesheet" href="../Components/css/Profile.css">
-</head>
-<body>
-    <?php include '../Components/NavBar.php'; ?>
+<?php
+require_once '../../Components/layout.php';
+
+/* ---- Sample data (replace with database queries later) ---- */
+$profileFields = [
+    'Full name' => 'Admin User',
+    'Username'  => 'admin.user',
+    'Email'     => 'admin.user@qcu.edu.ph',
+    'Role'      => 'Administrator',
+];
+
+$accountDetails = [
+    'Role'     => 'Administrator',
+    'Status'   => 'Active',
+    'Coverage' => 'Bautista Building - IT Labs',
+    'Access'   => 'Manual assignment',
+];
+
+renderHead('Profile & Account', 'Profile.css');
+?>
     <div class="container">
-        <header>
-            <div class="title-container">
-                <h1>Profile & Account</h1>
-                <p>Maintenance Reporting Portal</p>
-            </div>
-            <div class="user-info">
-                <span>Admin User</span>
-            </div>
-        </header>
+
+        <?php renderPageHeader('Profile & Account'); ?>
 
         <div class="content-layout">
+
             <main class="profile-card card">
                 <div class="avatar-section">
                     <div class="avatar-circle">A</div>
                     <h2>Admin User</h2>
                     <p>Administrator</p>
                 </div>
-                
+
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label>Full name</label>
-                        <input type="text" value="Admin User">
-                    </div>
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" value="admin.user">
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="text" value="admin.user@qcu.edu.ph">
-                    </div>
-                    <div class="form-group">
-                        <label>Role</label>
-                        <input type="text" value="Administrator">
-                    </div>
+                    <?php foreach ($profileFields as $label => $value): ?>
+                        <div class="form-group">
+                            <label><?= e($label) ?></label>
+                            <input type="text" value="<?= e($value) ?>">
+                        </div>
+                    <?php endforeach; ?>
                 </div>
 
                 <div class="form-actions">
@@ -53,28 +47,14 @@
 
             <aside class="account-card card">
                 <h3>Account</h3>
-                
-                <div class="detail-group">
-                    <span class="label">Role</span>
-                    <span class="value">Administrator</span>
-                </div>
-                
-                <div class="detail-group">
-                    <span class="label">Status</span>
-                    <span class="value">Active</span>
-                </div>
-                
-                <div class="detail-group">
-                    <span class="label">Coverage</span>
-                    <span class="value">Bautista Building - IT Labs</span>
-                </div>
-                
-                <div class="detail-group">
-                    <span class="label">Access</span>
-                    <span class="value">Manual assignment</span>
-                </div>
+                <?php foreach ($accountDetails as $label => $value): ?>
+                    <div class="detail-group">
+                        <span class="label"><?= e($label) ?></span>
+                        <span class="value"><?= e($value) ?></span>
+                    </div>
+                <?php endforeach; ?>
             </aside>
+
         </div>
     </div>
-</body>
-</html>
+<?php renderFoot(); ?>

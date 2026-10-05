@@ -66,8 +66,8 @@ textarea {
 
   margin: 0 auto;
 
-  padding: clamp(18px, 2.5vw, 30px) clamp(14px, 3vw, 28px)
-    clamp(26px, 3vw, 34px);
+  padding: clamp(calc(18px * var(--content-scale, 1)), 2.5vw, calc(30px * var(--content-scale, 1))) clamp(calc(14px * var(--content-scale, 1)), 3vw, calc(28px * var(--content-scale, 1)))
+    clamp(calc(26px * var(--content-scale, 1)), 3vw, calc(34px * var(--content-scale, 1)));
 
   overflow: hidden;
 
@@ -85,7 +85,7 @@ textarea {
       transparent 131px
     ),
     var(--background);
-  margin-top: 60px;
+  margin-top: calc(60px * var(--content-scale, 1));
 }
 
 /* ---------- BACKGROUND DECORATION ---------- */
@@ -145,13 +145,13 @@ textarea {
   width: 100%;
   max-width: 1450px;
 
-  margin: 0 auto 18px;
+  margin: 0 auto calc(18px * var(--content-scale, 1));
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  gap: 20px;
+  gap: calc(20px * var(--content-scale, 1));
   flex-wrap: wrap;
 }
 
@@ -160,7 +160,7 @@ textarea {
 
   color: var(--primary-dark);
 
-  font-size: clamp(28px, 3vw, 40px);
+  font-size: calc((clamp(28px, 3vw, 40px)) * var(--font-scale, 1));
   line-height: 1.05;
 
   font-weight: 800;
@@ -169,20 +169,20 @@ textarea {
 }
 
 .top-header p {
-  margin: 5px 0 0;
+  margin: calc(5px * var(--content-scale, 1)) 0 0;
 
   color: var(--muted);
 
-  font-size: clamp(10px, 0.8vw, 13px);
+  font-size: calc((clamp(10px, 0.8vw, 13px)) * var(--font-scale, 1));
   line-height: 1.4;
 }
 
 .header-user {
-  padding-top: 3px;
+  padding-top: calc(3px * var(--content-scale, 1));
 
   color: var(--primary-dark);
 
-  font-size: clamp(11px, 0.9vw, 15px);
+  font-size: calc((clamp(11px, 0.9vw, 15px)) * var(--font-scale, 1));
   font-weight: 700;
 
   white-space: nowrap;
@@ -199,7 +199,7 @@ textarea {
 
   margin: 0 auto;
 
-  padding: clamp(25px, 2.5vw, 38px);
+  padding: clamp(calc(25px * var(--content-scale, 1)), 2.5vw, calc(38px * var(--content-scale, 1)));
 
   background: rgba(255, 255, 255, 0.96);
 
@@ -218,7 +218,7 @@ textarea {
     minmax(310px, 380px)
     minmax(0, 1fr);
 
-  gap: clamp(25px, 3vw, 42px);
+  gap: clamp(calc(25px * var(--content-scale, 1)), 3vw, calc(42px * var(--content-scale, 1)));
 }
 
 .left-column,
@@ -226,7 +226,7 @@ textarea {
   display: flex;
   flex-direction: column;
 
-  gap: clamp(22px, 2vw, 30px);
+  gap: clamp(calc(22px * var(--content-scale, 1)), 2vw, calc(30px * var(--content-scale, 1)));
 
   min-width: 0;
 }
@@ -240,7 +240,7 @@ textarea {
 
   border-radius: 12px;
 
-  padding: clamp(22px, 2vw, 30px);
+  padding: clamp(calc(22px * var(--content-scale, 1)), 2vw, calc(30px * var(--content-scale, 1)));
 
   box-shadow: var(--shadow-md);
 
@@ -287,11 +287,11 @@ textarea {
 }
 
 .profile-card h2 {
-  margin: 0 0 20px;
+  margin: 0 0 calc(20px * var(--content-scale, 1));
 
   color: #ffffff;
 
-  font-size: clamp(16px, 1.1vw, 19px);
+  font-size: calc((clamp(16px, 1.1vw, 19px)) * var(--font-scale, 1));
 
   font-weight: 700;
 }
@@ -309,8 +309,8 @@ textarea {
 
   text-align: center;
 
-  padding-top: 35px;
-  padding-bottom: 30px;
+  padding-top: calc(35px * var(--content-scale, 1));
+  padding-bottom: calc(30px * var(--content-scale, 1));
 }
 
 /* ---------- PROFILE IMAGE ---------- */
@@ -319,7 +319,7 @@ textarea {
   width: clamp(135px, 11vw, 170px);
   height: clamp(135px, 11vw, 170px);
 
-  margin: 18px 0 22px;
+  margin: calc(18px * var(--content-scale, 1)) 0 calc(22px * var(--content-scale, 1));
 
   border-radius: 50%;
 
@@ -350,7 +350,7 @@ textarea {
 .profile-name {
   color: #ffffff;
 
-  font-size: clamp(25px, 2.2vw, 34px);
+  font-size: calc((clamp(25px, 2.2vw, 34px)) * var(--font-scale, 1));
 
   font-weight: 800;
 
@@ -362,11 +362,11 @@ textarea {
 }
 
 .profile-role {
-  margin-top: 7px;
+  margin-top: calc(7px * var(--content-scale, 1));
 
   color: rgba(255, 255, 255, 0.84);
 
-  font-size: clamp(12px, 0.8vw, 14px);
+  font-size: calc((clamp(12px, 0.8vw, 14px)) * var(--font-scale, 1));
 
   font-weight: 600;
 }
@@ -380,7 +380,7 @@ textarea {
 
   justify-content: space-between;
 
-  gap: 12px;
+  gap: calc(12px * var(--content-scale, 1));
 
   margin-top: auto;
 }
@@ -390,7 +390,7 @@ textarea {
 
   min-height: 40px;
 
-  padding: 7px 13px;
+  padding: calc(7px * var(--content-scale, 1)) calc(13px * var(--content-scale, 1));
 
   border: 0;
 
@@ -402,7 +402,7 @@ textarea {
 
   font-family: inherit;
 
-  font-size: clamp(10px, 0.75vw, 12px);
+  font-size: calc((clamp(10px, 0.75vw, 12px)) * var(--font-scale, 1));
 
   font-weight: 700;
 
@@ -440,15 +440,15 @@ textarea {
   align-items: center;
   justify-content: space-between;
 
-  gap: 20px;
+  gap: calc(20px * var(--content-scale, 1));
 
-  margin-bottom: 24px;
+  margin-bottom: calc(24px * var(--content-scale, 1));
 
-  padding-bottom: 15px;
+  padding-bottom: calc(15px * var(--content-scale, 1));
 
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 
-  font-size: clamp(13px, 0.9vw, 15px);
+  font-size: calc((clamp(13px, 0.9vw, 15px)) * var(--font-scale, 1));
 }
 
 .information-row:last-child {
@@ -470,7 +470,7 @@ textarea {
 
   text-align: right;
 
-  font-size: clamp(13px, 0.9vw, 15px);
+  font-size: calc((clamp(13px, 0.9vw, 15px)) * var(--font-scale, 1));
 
   font-weight: 700;
 }
@@ -486,7 +486,7 @@ textarea {
 
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
-  gap: 18px;
+  gap: calc(18px * var(--content-scale, 1));
 }
 
 .form-group {
@@ -496,11 +496,11 @@ textarea {
 .form-group label {
   display: block;
 
-  margin: 0 0 7px 2px;
+  margin: 0 0 calc(7px * var(--content-scale, 1)) calc(2px * var(--content-scale, 1));
 
   color: rgba(255, 255, 255, 0.9);
 
-  font-size: clamp(11px, 0.8vw, 14px);
+  font-size: calc((clamp(11px, 0.8vw, 14px)) * var(--font-scale, 1));
 
   font-weight: 700;
 }
@@ -520,11 +520,11 @@ textarea {
 
   color: #222222;
 
-  padding: 0 13px;
+  padding: 0 calc(13px * var(--content-scale, 1));
 
   font-family: inherit;
 
-  font-size: clamp(11px, 0.8vw, 13px);
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1));
 
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 
@@ -544,9 +544,9 @@ textarea {
 
   justify-content: flex-end;
 
-  gap: 9px;
+  gap: calc(9px * var(--content-scale, 1));
 
-  margin-top: 20px;
+  margin-top: calc(20px * var(--content-scale, 1));
 }
 
 .details-actions button {
@@ -554,7 +554,7 @@ textarea {
 
   height: 36px;
 
-  padding: 0 14px;
+  padding: 0 calc(14px * var(--content-scale, 1));
 
   border: 0;
 
@@ -566,7 +566,7 @@ textarea {
 
   cursor: pointer;
 
-  font-size: 11px;
+  font-size: calc((11px) * var(--font-scale, 1));
 
   font-weight: 700;
 
@@ -592,7 +592,7 @@ textarea {
 
   flex-direction: column;
 
-  gap: 12px;
+  gap: calc(12px * var(--content-scale, 1));
 }
 
 .activity-item {
@@ -603,9 +603,9 @@ textarea {
   align-items: center;
   justify-content: space-between;
 
-  gap: 18px;
+  gap: calc(18px * var(--content-scale, 1));
 
-  padding: 13px 16px;
+  padding: calc(13px * var(--content-scale, 1)) calc(16px * var(--content-scale, 1));
 
   background: #ffffff;
 
@@ -636,17 +636,17 @@ textarea {
 
   color: #17212b;
 
-  font-size: clamp(13px, 0.9vw, 16px);
+  font-size: calc((clamp(13px, 0.9vw, 16px)) * var(--font-scale, 1));
 
   line-height: 1.3;
 }
 
 .activity-item p {
-  margin: 5px 0 0;
+  margin: calc(5px * var(--content-scale, 1)) 0 0;
 
   color: var(--muted);
 
-  font-size: clamp(9px, 0.7vw, 11px);
+  font-size: calc((clamp(9px, 0.7vw, 11px)) * var(--font-scale, 1));
 
   line-height: 1.4;
 }
@@ -656,7 +656,7 @@ textarea {
 
   color: var(--primary);
 
-  font-size: clamp(11px, 0.8vw, 14px);
+  font-size: calc((clamp(11px, 0.8vw, 14px)) * var(--font-scale, 1));
 
   font-weight: 800;
 }
@@ -667,8 +667,8 @@ textarea {
   .profile-page {
     width: min(100%, 1280px);
 
-    padding-left: 30px;
-    padding-right: 30px;
+    padding-left: calc(30px * var(--content-scale, 1));
+    padding-right: calc(30px * var(--content-scale, 1));
   }
 
   .profile-container {
@@ -680,7 +680,7 @@ textarea {
       minmax(350px, 400px)
       minmax(0, 1fr);
 
-    gap: 45px;
+    gap: calc(45px * var(--content-scale, 1));
   }
 
   .profile-summary {
@@ -693,7 +693,7 @@ textarea {
   }
 
   .profile-name {
-    font-size: 38px;
+    font-size: calc((38px) * var(--font-scale, 1));
   }
 
   .account-information {
@@ -713,7 +713,7 @@ textarea {
 
 @media (max-width: 1000px) {
   .profile-page {
-    padding: 22px 25px 35px;
+    padding: calc(22px * var(--content-scale, 1)) calc(25px * var(--content-scale, 1)) calc(35px * var(--content-scale, 1));
   }
 
   .profile-grid {
@@ -721,15 +721,15 @@ textarea {
       minmax(260px, 310px)
       minmax(0, 1fr);
 
-    gap: 20px;
+    gap: calc(20px * var(--content-scale, 1));
   }
 
   .profile-container {
-    padding: 20px;
+    padding: calc(20px * var(--content-scale, 1));
   }
 
   .profile-card {
-    padding: 20px;
+    padding: calc(20px * var(--content-scale, 1));
   }
 
   .profile-summary {
@@ -742,7 +742,7 @@ textarea {
   }
 
   .profile-name {
-    font-size: 28px;
+    font-size: calc((28px) * var(--font-scale, 1));
   }
 
   .account-information,
@@ -769,7 +769,7 @@ textarea {
 
     margin-left: 0;
 
-    padding: 22px 20px 35px;
+    padding: calc(22px * var(--content-scale, 1)) calc(20px * var(--content-scale, 1)) calc(35px * var(--content-scale, 1));
   }
 
   .profile-grid {
@@ -777,15 +777,15 @@ textarea {
   }
 
   .profile-container {
-    padding: 18px;
+    padding: calc(18px * var(--content-scale, 1));
   }
 
   .top-header {
-    margin-bottom: 15px;
+    margin-bottom: calc(15px * var(--content-scale, 1));
   }
 
   .top-header h1 {
-    font-size: 30px;
+    font-size: calc((30px) * var(--font-scale, 1));
   }
 }
 
@@ -793,29 +793,29 @@ textarea {
 
 @media (max-width: 650px) {
   .profile-page {
-    padding: 16px 10px 25px;
+    padding: calc(16px * var(--content-scale, 1)) calc(10px * var(--content-scale, 1)) calc(25px * var(--content-scale, 1));
   }
 
   .top-header {
-    margin-bottom: 14px;
+    margin-bottom: calc(14px * var(--content-scale, 1));
 
-    gap: 8px;
+    gap: calc(8px * var(--content-scale, 1));
   }
 
   .top-header h1 {
-    font-size: 25px;
+    font-size: calc((25px) * var(--font-scale, 1));
   }
 
   .top-header p {
-    font-size: 9px;
+    font-size: calc((9px) * var(--font-scale, 1));
   }
 
   .header-user {
-    font-size: 10px;
+    font-size: calc((10px) * var(--font-scale, 1));
   }
 
   .profile-container {
-    padding: 12px;
+    padding: calc(12px * var(--content-scale, 1));
 
     border-radius: 10px;
   }
@@ -826,11 +826,11 @@ textarea {
 
   .left-column,
   .right-column {
-    gap: 14px;
+    gap: calc(14px * var(--content-scale, 1));
   }
 
   .profile-card {
-    padding: 20px;
+    padding: calc(20px * var(--content-scale, 1));
   }
 
   .profile-summary,
@@ -841,56 +841,56 @@ textarea {
   }
 
   .profile-summary {
-    padding: 32px 18px 25px;
+    padding: calc(32px * var(--content-scale, 1)) calc(18px * var(--content-scale, 1)) calc(25px * var(--content-scale, 1));
   }
 
   .profile-avatar {
     width: 125px;
     height: 125px;
 
-    margin-top: 12px;
-    margin-bottom: 20px;
+    margin-top: calc(12px * var(--content-scale, 1));
+    margin-bottom: calc(20px * var(--content-scale, 1));
   }
 
   .profile-name {
-    font-size: 27px;
+    font-size: calc((27px) * var(--font-scale, 1));
   }
 
   .profile-role {
-    font-size: 12px;
+    font-size: calc((12px) * var(--font-scale, 1));
   }
 
   .profile-actions {
-    margin-top: 28px;
+    margin-top: calc(28px * var(--content-scale, 1));
   }
 
   .profile-actions button {
     min-height: 40px;
 
-    font-size: 11px;
+    font-size: calc((11px) * var(--font-scale, 1));
   }
 
   .account-information {
-    padding: 20px;
+    padding: calc(20px * var(--content-scale, 1));
   }
 
   .information-row {
-    margin-bottom: 20px;
+    margin-bottom: calc(20px * var(--content-scale, 1));
 
-    font-size: 13px;
+    font-size: calc((13px) * var(--font-scale, 1));
   }
 
   .information-row strong {
-    font-size: 13px;
+    font-size: calc((13px) * var(--font-scale, 1));
   }
 
   .account-details,
   .recent-activity {
-    padding: 20px;
+    padding: calc(20px * var(--content-scale, 1));
   }
 
   .form-group label {
-    font-size: 11px;
+    font-size: calc((11px) * var(--font-scale, 1));
   }
 
   .form-group input {
@@ -900,19 +900,19 @@ textarea {
   .activity-item {
     min-height: 65px;
 
-    padding: 12px;
+    padding: calc(12px * var(--content-scale, 1));
   }
 
   .activity-item strong {
-    font-size: 12px;
+    font-size: calc((12px) * var(--font-scale, 1));
   }
 
   .activity-item p {
-    font-size: 9px;
+    font-size: calc((9px) * var(--font-scale, 1));
   }
 
   .activity-item span {
-    font-size: 10px;
+    font-size: calc((10px) * var(--font-scale, 1));
   }
 }
 
@@ -946,7 +946,7 @@ textarea {
 
     flex-direction: column;
 
-    gap: 5px;
+    gap: calc(5px * var(--content-scale, 1));
   }
 
   .information-row strong {
@@ -970,20 +970,20 @@ textarea {
 
 @media (max-width: 350px) {
   .profile-page {
-    padding-left: 7px;
-    padding-right: 7px;
+    padding-left: calc(7px * var(--content-scale, 1));
+    padding-right: calc(7px * var(--content-scale, 1));
   }
 
   .profile-container {
-    padding: 8px;
+    padding: calc(8px * var(--content-scale, 1));
   }
 
   .profile-card {
-    padding: 17px;
+    padding: calc(17px * var(--content-scale, 1));
   }
 
   .top-header h1 {
-    font-size: 24px;
+    font-size: calc((24px) * var(--font-scale, 1));
   }
 
   .profile-avatar {
@@ -992,7 +992,7 @@ textarea {
   }
 
   .profile-name {
-    font-size: 24px;
+    font-size: calc((24px) * var(--font-scale, 1));
   }
 }
 
@@ -1043,7 +1043,7 @@ textarea {
 /* Header becomes a banner */
 .top-header {
   overflow: hidden;
-  padding: 26px 30px;
+  padding: calc(26px * var(--content-scale, 1)) calc(30px * var(--content-scale, 1));
   border-radius: 16px;
   background: linear-gradient(
     135deg,
@@ -1077,8 +1077,8 @@ textarea {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 14px 6px 6px;
+  gap: calc(10px * var(--content-scale, 1));
+  padding: calc(6px * var(--content-scale, 1)) calc(14px * var(--content-scale, 1)) calc(6px * var(--content-scale, 1)) calc(6px * var(--content-scale, 1));
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -1093,7 +1093,7 @@ textarea {
   color: var(--primary-dark);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: calc((11px) * var(--font-scale, 1));
   font-weight: 800;
 }
 
@@ -1136,10 +1136,10 @@ textarea {
 .profile-card h2 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(10px * var(--content-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  font-size: clamp(13px, 0.95vw, 15px);
+  font-size: calc((clamp(13px, 0.95vw, 15px)) * var(--font-scale, 1));
 }
 
 .profile-card h2::before {
@@ -1157,7 +1157,7 @@ textarea {
 
 .avatar-initials {
   color: var(--primary-dark);
-  font-size: clamp(38px, 3.6vw, 54px);
+  font-size: calc((clamp(38px, 3.6vw, 54px)) * var(--font-scale, 1));
   font-weight: 800;
   letter-spacing: 1px;
 }
@@ -1165,7 +1165,7 @@ textarea {
 /* Profile role as a pill */
 .profile-role {
   display: inline-block;
-  padding: 5px 14px;
+  padding: calc(5px * var(--content-scale, 1)) calc(14px * var(--content-scale, 1));
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -1182,18 +1182,18 @@ textarea {
 .information-row span {
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  font-size: clamp(10px, 0.75vw, 12px);
+  font-size: calc((clamp(10px, 0.75vw, 12px)) * var(--font-scale, 1));
 }
 
 .status-active {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 12px;
+  gap: calc(7px * var(--content-scale, 1));
+  padding: calc(4px * var(--content-scale, 1)) calc(12px * var(--content-scale, 1));
   border-radius: 999px;
   background: #e3f7ea;
   color: #17853f !important;
-  font-size: clamp(11px, 0.8vw, 13px) !important;
+  font-size: calc((clamp(11px, 0.8vw, 13px)) * var(--font-scale, 1)) !important;
 }
 
 .status-active::before {
@@ -1242,7 +1242,7 @@ textarea {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  padding-left: 22px;
+  padding-left: calc(22px * var(--content-scale, 1));
 }
 
 .activity-item::before {
@@ -1260,7 +1260,7 @@ textarea {
 }
 
 .activity-item span {
-  padding: 4px 10px;
+  padding: calc(4px * var(--content-scale, 1)) calc(10px * var(--content-scale, 1));
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary-dark);
@@ -1269,7 +1269,7 @@ textarea {
 /* Smaller screens */
 @media (max-width: 600px) {
   .top-header {
-    padding: 18px 18px;
+    padding: calc(18px * var(--content-scale, 1)) calc(18px * var(--content-scale, 1));
     border-radius: 14px;
   }
 
@@ -1278,7 +1278,7 @@ textarea {
   }
 
   .activity-item {
-    padding-left: 18px;
+    padding-left: calc(18px * var(--content-scale, 1));
   }
 }
 

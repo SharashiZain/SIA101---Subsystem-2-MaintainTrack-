@@ -1,244 +1,127 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintenance Personnel Dashboard</title>
-    <link rel="stylesheet" href="../Components/css/Maintenance.css">
-</head>
+<?php
+require_once '../../Components/layout.php';
 
-<body>
-<?php include '../Components/NavBar.php'; ?>
-    <main class="dashboard-page">
+/* ---- Data arrays ---- */
+$stats = [
+    ['title' => 'My Assigned Tasks', 'count' => 10, 'desc' => 'Pending / In-Progress', 'class' => ''],
+    ['title' => 'Total Requests',    'count' => 10, 'desc' => 'This Month',            'class' => 'total'],
+    ['title' => 'Completed',         'count' => 5,  'desc' => 'This Month',            'class' => 'completed'],
+    ['title' => 'Pending',           'count' => 5,  'desc' => 'All Pending requests',  'class' => 'pending'],
+];
 
-        <!-- HEADER -->
-        <header class="top-header">
-            <div class="page-heading">
-                <h1>Maintenance Personnel Dashboard</h1>
-                <p>Maintenance Reporting Portal • Barangay Gulod</p>
-            </div>
-        </header>
+$requests = [
+    ['id' => 'MT-00124', 'issue' => "PC Won't turn on", 'equipment' => 'Computer unit #1',         'location' => 'Lab 1 (B1)', 'status' => 'Completed',   'date' => 'Sept 19, 2026', 'time' => '9:00 AM'],
+    ['id' => 'MT-00127', 'issue' => 'Broken Aircon',    'equipment' => 'Air Conditioning unit #3', 'location' => 'Lab 3 (B1)', 'status' => 'Assigned',    'date' => 'Sept 16, 2026', 'time' => '8:45 AM'],
+    ['id' => 'MT-00128', 'issue' => "PC Won't turn on", 'equipment' => 'Computer unit #1',         'location' => 'Lab 1 (B1)', 'status' => 'In Progress', 'date' => 'Sept 19, 2026', 'time' => '8:00 AM'],
+    ['id' => 'MT-00129', 'issue' => 'Network drop',     'equipment' => 'Switch Port #4',           'location' => 'Lab 2 (B1)', 'status' => 'In Progress', 'date' => 'Sept 19, 2026', 'time' => '8:00 AM'],
+];
 
-        <!-- STATISTICS -->
-        <section class="stats-grid">
+$activities = [
+    ['icon' => '✓', 'class' => 'completed-icon', 'title' => 'Request MT-00124 mark as completed.',       'equipment' => 'Computer unit #1',         'time' => '9:00 AM'],
+    ['icon' => '👥', 'class' => 'assigned-icon',  'title' => 'Request MT-00127 assigned to you.',         'equipment' => 'Air Conditioning unit #3', 'time' => '8:45 AM'],
+    ['icon' => '↻', 'class' => 'progress-icon',  'title' => 'Request MT-00128 updated to In-Progress.', 'equipment' => 'Air Conditioning unit #3', 'time' => '7:47 AM'],
+];
 
+renderHead('Maintenance Personnel Dashboard', 'Maintenance.css', 'regular');
+?>
+<div class="page">
+
+    <?php renderPageHeader('Maintenance Personnel Dashboard', 'Maintenance Reporting Portal • Barangay Gulod', 'regular'); ?>
+
+    <!-- STATISTICS -->
+    <section class="stats-grid">
+        <?php foreach ($stats as $item): ?>
             <div class="stat-card">
-                <span class="stat-title">My Assigned Tasks</span>
-                <strong class="stat-number">10</strong>
-                <span class="stat-description">Pending / In-Progress</span>
+                <span class="stat-title"><?= e($item['title']) ?></span>
+                <strong class="stat-number <?= e($item['class']) ?>"><?= (int)$item['count'] ?></strong>
+                <span class="stat-description"><?= e($item['desc']) ?></span>
+            </div>
+        <?php endforeach; ?>
+    </section>
+
+    <!-- LOWER CONTENT -->
+    <section class="dashboard-grid">
+
+        <!-- RECENT REQUESTS -->
+        <div class="dashboard-panel requests-panel">
+            <div class="panel-header">
+                <h2>Recent Maintenance Requests</h2>
             </div>
 
-            <div class="stat-card">
-                <span class="stat-title">Total Requests</span>
-                <strong class="stat-number total">10</strong>
-                <span class="stat-description">This Month</span>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-title">Completed</span>
-                <strong class="stat-number completed">5</strong>
-                <span class="stat-description">This Month</span>
-            </div>
-
-            <div class="stat-card">
-                <span class="stat-title">Pending</span>
-                <strong class="stat-number pending">5</strong>
-                <span class="stat-description">All Pending requests</span>
-            </div>
-
-        </section>
-
-        <!-- LOWER CONTENT -->
-        <section class="dashboard-grid">
-
-            <!-- RECENT REQUESTS -->
-            <div class="dashboard-panel requests-panel">
-
-                <div class="panel-header">
-                    <h2>Recent Maintenance Requests</h2>
+            <div class="request-tools">
+                <div class="search-box">
+                    <input type="text" placeholder="Search requests...">
+                    <span>⌕</span>
                 </div>
 
-                <div class="request-tools">
+                <select>
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
 
-                    <div class="search-box">
-                        <input type="text" placeholder="Search requests...">
-                        <span>⌕</span>
-                    </div>
-
-                    <select>
-                        <option>Filter</option>
-                        <option>Pending</option>
-                        <option>Assigned</option>
-                        <option>In Progress</option>
-                        <option>Completed</option>
-                    </select>
-
-                    <button class="reset-button">
-                        Reset
-                    </button>
-
-                    <button class="view-button">
-                        View all
-                    </button>
-
-                </div>
-
-                <div class="table-wrapper">
-
-                    <table>
-
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>ISSUE/DESCRIPTION</th>
-                                <th>LOCATION</th>
-                                <th>STATUS</th>
-                                <th>DATE REPORTED</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-
-                            <tr>
-                                <td>MT-00124</td>
-                                <td>
-                                    PC Won't turn on
-                                    <small>Computer unit #1</small>
-                                </td>
-                                <td>Lab 1 (B1)</td>
-                                <td><span class="status-badge status-completed">Completed</span></td>
-                                <td>
-                                    Sept 19, 2026
-                                    <small>9:00 AM</small>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>MT-00127</td>
-                                <td>
-                                    Broken Aircon
-                                    <small>Air Conditioning unit #3</small>
-                                </td>
-                                <td>Lab 3 (B1)</td>
-                                <td><span class="status-badge status-assigned">Assigned</span></td>
-                                <td>
-                                    Sept 16, 2026
-                                    <small>8:45 AM</small>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>MT-00124</td>
-                                <td>
-                                    PC Won't turn on
-                                    <small>Computer unit #1</small>
-                                </td>
-                                <td>Lab 1 (B1)</td>
-                                <td><span class="status-badge status-progress">In Progress</span></td>
-                                <td>
-                                    Sept 19, 2026
-                                    <small>8:00 AM</small>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>MT-00124</td>
-                                <td>
-                                    PC Won't turn on
-                                    <small>Computer unit #1</small>
-                                </td>
-                                <td>Lab 1 (B1)</td>
-                                <td><span class="status-badge status-progress">In Progress</span></td>
-                                <td>
-                                    Sept 19, 2026
-                                    <small>8:00 AM</small>
-                                </td>
-                            </tr>
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
+                <button class="reset-button" type="button">Reset</button>
+                <button class="view-button" type="button">View all</button>
             </div>
 
-            <!-- RECENT ACTIVITIES -->
-            <div class="dashboard-panel activity-panel">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ISSUE / DESCRIPTION</th>
+                            <th>LOCATION</th>
+                            <th>STATUS</th>
+                            <th>DATE REPORTED</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($requests as $req): ?>
+                            <tr>
+                                <td><b><?= e($req['id']) ?></b></td>
+                                <td>
+                                    <?= e($req['issue']) ?>
+                                    <small><?= e($req['equipment']) ?></small>
+                                </td>
+                                <td><?= e($req['location']) ?></td>
+                                <td><?= statusBadge($req['status']) ?></td>
+                                <td>
+                                    <?= e($req['date']) ?>
+                                    <small><?= e($req['time']) ?></small>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                <div class="panel-header">
-                    <h2>Recent Activities</h2>
-                </div>
+        <!-- RECENT ACTIVITIES -->
+        <div class="dashboard-panel activity-panel">
+            <div class="panel-header">
+                <h2>Recent Activities</h2>
+            </div>
 
-                <div class="activity-list">
-
+            <div class="activity-list">
+                <?php foreach ($activities as $act): ?>
                     <div class="activity-item">
-
-                        <div class="activity-icon completed-icon">
-                            ✓
+                        <div class="activity-icon <?= e($act['class']) ?>">
+                            <?= e($act['icon']) ?>
                         </div>
-
                         <div class="activity-content">
-                            <strong>
-                                Request MT-00124 mark as completed.
-                            </strong>
-
-                            <span>
-                                Computer unit #1
-                            </span>
+                            <strong><?= e($act['title']) ?></strong>
+                            <span><?= e($act['equipment']) ?></span>
                         </div>
-
-                        <time>9:00 AM</time>
-
+                        <time><?= e($act['time']) ?></time>
                     </div>
-
-                    <div class="activity-item">
-
-                        <div class="activity-icon assigned-icon">
-                            👥
-                        </div>
-
-                        <div class="activity-content">
-                            <strong>
-                                Request MT-00127 assigned to you.
-                            </strong>
-
-                            <span>
-                                Air Conditioning unit #3
-                            </span>
-                        </div>
-
-                        <time>8:45 AM</time>
-
-                    </div>
-
-                    <div class="activity-item">
-
-                        <div class="activity-icon progress-icon">
-                            ↻
-                        </div>
-
-                        <div class="activity-content">
-                            <strong>
-                                Request MT-00124 updated to In-Progress.
-                            </strong>
-
-                            <span>
-                                Air Conditioning unit #3
-                            </span>
-                        </div>
-
-                        <time>7:47 AM</time>
-
-                    </div>
-
-                </div>
-
+                <?php endforeach; ?>
             </div>
+        </div>
 
-        </section>
+    </section>
 
-    </main>
-
-</body>
+</div>
+<?php renderFoot(); ?>
 </html>

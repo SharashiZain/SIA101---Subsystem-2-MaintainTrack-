@@ -1,237 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
+<?php
+require_once '../../Components/layout.php';
 
-<head>
+/* ---- Sample data (replace with database queries later) ---- */
+$staff = [
+    ['name' => 'Jones',  'openTasks' => 3],
+    ['name' => 'Marco',  'openTasks' => 2],
+    ['name' => 'LeBron', 'openTasks' => 1],
+];
 
-    <meta charset="UTF-8">
+$unassigned = [
+    ['id' => 'MT-00133', 'issue' => 'No internet connection'],
+    ['id' => 'MT-00135', 'issue' => 'Flickering lights'],
+];
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Assignments & Personnel</title>
-
-    <link rel="stylesheet" href="../Components/css/Assignment.css">
-
-</head>
-
-
-<body>
-<?php include '../Components/NavBar.php'; ?>
+renderHead('Assignments & Personnel', 'Assignment.css');
+?>
 <div class="page">
 
-
-    <!-- HEADER -->
-
-    <header class="page-header">
-
-        <div>
-
-            <h1>
-                Assignments & Personnel
-            </h1>
-
-            <p>
-                Maintenance Reporting Portal
-            </p>
-
-        </div>
-
-
-        <span class="admin-user">
-            Admin User
-        </span>
-
-    </header>
-
-
-
-    <!-- CONTENT -->
+    <?php renderPageHeader('Assignments & Personnel'); ?>
 
     <div class="assignment-grid">
 
-
         <!-- IT SUPPORT STAFF -->
-
         <section class="assignment-card">
-
-            <h2>
-                IT Support Staff
-            </h2>
-
+            <h2>IT Support Staff</h2>
 
             <div class="staff-list">
-
-
-                <!-- JONES -->
-
-                <div class="staff-item">
-
-                    <div class="staff-info">
-
-                        <div class="profile-circle"></div>
-
-                        <div>
-
-                            <strong>
-                                Jones
-                            </strong>
-
-                            <small>
-                                3 open tasks
-                            </small>
-
+                <?php foreach ($staff as $member): ?>
+                    <div class="staff-item">
+                        <div class="staff-info">
+                            <div class="profile-circle"></div>
+                            <div>
+                                <strong><?= e($member['name']) ?></strong>
+                                <small><?= e(openTasksLabel($member['openTasks'])) ?></small>
+                            </div>
                         </div>
-
+                        <button class="workload-button">View workload</button>
                     </div>
-
-
-                    <button class="workload-button">
-                        View workload
-                    </button>
-
-                </div>
-
-
-
-                <!-- MARCO -->
-
-                <div class="staff-item">
-
-                    <div class="staff-info">
-
-                        <div class="profile-circle"></div>
-
-                        <div>
-
-                            <strong>
-                                Marco
-                            </strong>
-
-                            <small>
-                                2 open tasks
-                            </small>
-
-                        </div>
-
-                    </div>
-
-
-                    <button class="workload-button">
-                        View workload
-                    </button>
-
-                </div>
-
-
-
-                <!-- LEBRON -->
-
-                <div class="staff-item">
-
-                    <div class="staff-info">
-
-                        <div class="profile-circle"></div>
-
-                        <div>
-
-                            <strong>
-                                LeBron
-                            </strong>
-
-                            <small>
-                                1 open task
-                            </small>
-
-                        </div>
-
-                    </div>
-
-
-                    <button class="workload-button">
-                        View workload
-                    </button>
-
-                </div>
-
-
+                <?php endforeach; ?>
             </div>
-
         </section>
-
-
 
         <!-- UNASSIGNED REQUESTS -->
-
         <section class="assignment-card">
-
-            <h2>
-                Unassigned Requests
-            </h2>
-
+            <h2>Unassigned Requests</h2>
 
             <div class="unassigned-list">
-
-
-                <!-- REQUEST 1 -->
-
-                <div class="unassigned-item">
-
-                    <div>
-
-                        <strong>
-                            MT-00133
-                        </strong>
-
-                        <small>
-                            No internet connection
-                        </small>
-
+                <?php foreach ($unassigned as $request): ?>
+                    <div class="unassigned-item">
+                        <div>
+                            <strong><?= e($request['id']) ?></strong>
+                            <small><?= e($request['issue']) ?></small>
+                        </div>
+                        <button class="assign-button">
+                            Assign / Reassign
+                        </button>
                     </div>
-
-
-                    <button class="assign-button">
-                        Assign / Reassign
-                    </button>
-
-                </div>
-
-
-
-                <!-- REQUEST 2 -->
-
-                <div class="unassigned-item">
-
-                    <div>
-
-                        <strong>
-                            MT-00135
-                        </strong>
-
-                        <small>
-                            Flickering lights
-                        </small>
-
-                    </div>
-
-
-                    <button class="assign-button">
-                        Assign / Reassign
-                    </button>
-
-                </div>
-
-
+                <?php endforeach; ?>
             </div>
-
         </section>
 
-
     </div>
-
 </div>
-
-</body>
-
-</html>
+<?php renderFoot(); ?>

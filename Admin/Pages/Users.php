@@ -1,23 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User & Role Management</title>
-    <link rel="stylesheet" href="../Components/css/Users.css">
-</head>
-<body>
-    <?php include '../Components/NavBar.php'; ?>
+<?php
+require_once '../../Components/layout.php';
+
+/* ---- Sample data (replace with database queries later) ---- */
+$users = [
+    ['name' => 'Admin User',      'role' => 'Admin',            'status' => 'Active', 'lastActive' => 'Sept 19, 2026'],
+    ['name' => 'Juan Dela Cruz',  'role' => 'IT Support Staff', 'status' => 'Active', 'lastActive' => 'Sept 19, 2026'],
+    ['name' => 'Maria Santos',    'role' => 'IT Support Staff', 'status' => 'Active', 'lastActive' => 'Sept 19, 2026'],
+    ['name' => 'Carlo Reyes',     'role' => 'IT Support Staff', 'status' => 'Active', 'lastActive' => 'Sept 18, 2026'],
+];
+
+renderHead('User & Role Management', 'Users.css');
+?>
     <div class="container">
-        <header>
-            <div class="title-container">
-                <h1>User & Role Management</h1>
-                <p>Maintenance Reporting Portal</p>
-            </div>
-            <div class="user-info">
-                <span>Admin User</span>
-            </div>
-        </header>
+
+        <?php renderPageHeader('User & Role Management'); ?>
 
         <main class="card border-highlight">
             <div class="card-header">
@@ -39,37 +35,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td class="font-bold">Admin User</td>
-                        <td class="text-gray">Admin</td>
-                        <td class="text-green font-bold">Active</td>
-                        <td class="text-gray">Sept 19, 2026</td>
-                        <td><button class="btn-edit">Edit</button></td>
-                    </tr>
-                    <tr>
-                        <td class="font-bold">Juan Dela Cruz</td>
-                        <td class="text-gray">IT Support Staff</td>
-                        <td class="text-green font-bold">Active</td>
-                        <td class="text-gray">Sept 19, 2026</td>
-                        <td><button class="btn-edit">Edit</button></td>
-                    </tr>
-                    <tr>
-                        <td class="font-bold">Maria Santos</td>
-                        <td class="text-gray">IT Support Staff</td>
-                        <td class="text-green font-bold">Active</td>
-                        <td class="text-gray">Sept 19, 2026</td>
-                        <td><button class="btn-edit">Edit</button></td>
-                    </tr>
-                    <tr>
-                        <td class="font-bold">Carlo Reyes</td>
-                        <td class="text-gray">IT Support Staff</td>
-                        <td class="text-green font-bold">Active</td>
-                        <td class="text-gray">Sept 18, 2026</td>
-                        <td><button class="btn-edit">Edit</button></td>
-                    </tr>
+                    <?php foreach ($users as $user): ?>
+                        <tr>
+                            <td class="font-bold"><?= e($user['name']) ?></td>
+                            <td class="text-gray"><?= e($user['role']) ?></td>
+                            <td class="text-green font-bold"><?= e($user['status']) ?></td>
+                            <td class="text-gray"><?= e($user['lastActive']) ?></td>
+                            <td><button class="btn-edit">Edit</button></td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </main>
+
     </div>
-</body>
-</html>
+<?php renderFoot(); ?>

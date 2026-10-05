@@ -1,374 +1,121 @@
-<!DOCTYPE html>
-<html lang="en">
+<?php
+require_once '../../Components/layout.php';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+/* ---- Sample data (replace with database queries later) ---- */
+$stats = [
+    ['label' => 'Total Requests',        'value' => 10, 'note' => 'This Month',      'color' => ''],
+    ['label' => 'Pending / Unassigned',  'value' => 5,  'note' => 'All Pending',     'color' => 'orange'],
+    ['label' => 'In Progress',           'value' => 3,  'note' => 'Active Requests', 'color' => 'purple'],
+    ['label' => 'Completed',             'value' => 2,  'note' => 'This Month',      'color' => 'green'],
+];
 
-    <title>Administrator Dashboard</title>
+$secondaryStats = [
+    ['label' => 'Avg. Response Time',          'value' => '2h 18m', 'color' => '',       'note' => 'Based on all available requests'],
+    ['label' => 'Recurring-Issue Equipment',   'value' => 3,        'color' => 'orange', 'note' => 'units with repeat repairs'],
+];
 
-    <!-- External CSS -->
-    <link rel="stylesheet" href="../Components/css/Dashboard.css">
-</head>
+$requests = [
+    ['id' => 'MT-00131', 'issue' => "PC won't turn on",       'equipment' => 'Computer Unit #1',        'lab' => 'Lab 1 (01)', 'category' => 'Hardware',   'status' => 'In Progress'],
+    ['id' => 'MT-00132', 'issue' => 'Broken aircon',          'equipment' => 'Air Conditioning Unit #2', 'lab' => 'Lab 3 (01)', 'category' => 'Facility',   'status' => 'Assigned'],
+    ['id' => 'MT-00133', 'issue' => 'No internet connection', 'equipment' => 'Switch #2',                'lab' => 'Lab 2 (01)', 'category' => 'Network',    'status' => 'Pending'],
+    ['id' => 'MT-00134', 'issue' => "Software won't launch",  'equipment' => 'Computer Unit #7',        'lab' => 'Lab 1 (01)', 'category' => 'Software',   'status' => 'Completed'],
+    ['id' => 'MT-00135', 'issue' => 'Flickering lights',      'equipment' => 'Lab 4 Lights',            'lab' => 'Lab 4 (01)', 'category' => 'Electrical', 'status' => 'Pending'],
+];
 
-<body>
-<?php include '../Components/NavBar.php'; ?>
+$activities = [
+    ['text' => 'Request MT-0034 completed',          'time' => '9:10 AM'],
+    ['text' => 'Request MT-0032 assigned to Maria',  'time' => '8:45 AM'],
+    ['text' => 'Request MT-0031 updated',            'time' => '7:45 AM'],
+];
+
+renderHead('Administrator Dashboard', 'Dashboard.css');
+?>
     <div class="dashboard">
 
-        <!-- HEADER -->
-        <header class="topbar">
-
-            <div>
-                <h1>Administrator Dashboard</h1>
-
-                <p>
-                    Maintenance Reporting Portal · Bautista Building, IT Computer Laboratories
-                </p>
-            </div>
-
-            <div class="admin-user">
-                Admin User
-            </div>
-
-        </header>
-
+        <?php renderPageHeader(
+            'Administrator Dashboard',
+            'Maintenance Reporting Portal · Bautista Building, IT Computer Laboratories'
+        ); ?>
 
         <!-- STATISTICS -->
         <section class="stats">
-
-            <div class="stat-card">
-                <span>Total Requests</span>
-                <strong>10</strong>
-                <small>This Month</small>
-            </div>
-
-            <div class="stat-card">
-                <span>Pending / Unassigned</span>
-                <strong class="orange">5</strong>
-                <small>All Pending</small>
-            </div>
-
-            <div class="stat-card">
-                <span>In Progress</span>
-                <strong class="purple">3</strong>
-                <small>Active Requests</small>
-            </div>
-
-            <div class="stat-card">
-                <span>Completed</span>
-                <strong class="green">2</strong>
-                <small>This Month</small>
-            </div>
-
+            <?php foreach ($stats as $stat): ?>
+                <div class="stat-card">
+                    <span><?= e($stat['label']) ?></span>
+                    <strong<?= $stat['color'] ? ' class="' . e($stat['color']) . '"' : '' ?>><?= e($stat['value']) ?></strong>
+                    <small><?= e($stat['note']) ?></small>
+                </div>
+            <?php endforeach; ?>
         </section>
-
 
         <!-- SECONDARY STATISTICS -->
         <section class="secondary-stats">
-
-            <div class="wide-stat">
-
-                <div>
-                    <span>Avg. Response Time</span>
-                    <strong>2h 18m</strong>
+            <?php foreach ($secondaryStats as $stat): ?>
+                <div class="wide-stat">
+                    <div>
+                        <span><?= e($stat['label']) ?></span>
+                        <strong<?= $stat['color'] ? ' class="' . e($stat['color']) . '"' : '' ?>><?= e($stat['value']) ?></strong>
+                    </div>
+                    <small><?= e($stat['note']) ?></small>
                 </div>
-
-                <small>
-                    Based on all available requests
-                </small>
-
-            </div>
-
-
-            <div class="wide-stat">
-
-                <div>
-                    <span>Recurring-Issue Equipment</span>
-                    <strong class="orange">3</strong>
-                </div>
-
-                <small>
-                    units with repeat repairs
-                </small>
-
-            </div>
-
+            <?php endforeach; ?>
         </section>
-
 
         <!-- MAIN CONTENT -->
         <div class="content-grid">
 
-
             <!-- MAINTENANCE REQUESTS -->
             <section class="panel requests-panel">
-
                 <div class="panel-title">
-
-                    <h2>
-                        Recent Maintenance Requests
-                    </h2>
-
+                    <h2>Recent Maintenance Requests</h2>
                 </div>
 
-
-                <!-- TOOLBAR -->
                 <div class="toolbar">
-
-                    <input
-                        type="text"
-                        placeholder="Search requests"
-                    >
-
-                    <button>
-                        Filter
-                    </button>
-
-                    <a href="#">
-                        Reset
-                    </a>
-
-                    <a href="#" class="view-all">
-                        View all
-                    </a>
-
+                    <input type="text" placeholder="Search requests">
+                    <button>Filter</button>
+                    <a href="#">Reset</a>
+                    <a href="#" class="view-all">View all</a>
                 </div>
 
-
-                <!-- TABLE -->
                 <div class="table-wrap">
-
                     <table>
-
                         <thead>
-
                             <tr>
-
                                 <th>ID</th>
-
                                 <th>ISSUE / DESCRIPTION</th>
-
                                 <th>EQUIPMENT</th>
-
                                 <th>LAB</th>
-
                                 <th>CATEGORY</th>
-
                                 <th>STATUS</th>
-
                             </tr>
-
                         </thead>
-
-
                         <tbody>
-
-                            <tr>
-
-                                <td>MT-00131</td>
-
-                                <td>
-                                    <b>PC won't turn on</b>
-                                </td>
-
-                                <td>
-                                    Computer Unit #1
-                                </td>
-
-                                <td>
-                                    Lab 1 (01)
-                                </td>
-
-                                <td>
-                                    Hardware
-                                </td>
-
-                                <td>
-                                    <span class="status in-progress">
-                                        In Progress
-                                    </span>
-                                </td>
-
-                            </tr>
-
-
-                            <tr>
-
-                                <td>MT-00132</td>
-
-                                <td>
-                                    <b>Broken aircon</b>
-                                </td>
-
-                                <td>
-                                    Air Conditioning Unit #2
-                                </td>
-
-                                <td>
-                                    Lab 3 (01)
-                                </td>
-
-                                <td>
-                                    Facility
-                                </td>
-
-                                <td>
-                                    <span class="status assigned">
-                                        Assigned
-                                    </span>
-                                </td>
-
-                            </tr>
-
-
-                            <tr>
-
-                                <td>MT-00133</td>
-
-                                <td>
-                                    <b>No internet connection</b>
-                                </td>
-
-                                <td>
-                                    Switch #2
-                                </td>
-
-                                <td>
-                                    Lab 2 (01)
-                                </td>
-
-                                <td>
-                                    Network
-                                </td>
-
-                                <td>
-                                    <span class="status pending">
-                                        Pending
-                                    </span>
-                                </td>
-
-                            </tr>
-
-
-                            <tr>
-
-                                <td>MT-00134</td>
-
-                                <td>
-                                    <b>Software won't launch</b>
-                                </td>
-
-                                <td>
-                                    Computer Unit #7
-                                </td>
-
-                                <td>
-                                    Lab 1 (01)
-                                </td>
-
-                                <td>
-                                    Software
-                                </td>
-
-                                <td>
-                                    <span class="status completed">
-                                        Completed
-                                    </span>
-                                </td>
-
-                            </tr>
-
-
-                            <tr>
-
-                                <td>MT-00135</td>
-
-                                <td>
-                                    <b>Flickering lights</b>
-                                </td>
-
-                                <td>
-                                    Lab 4 Lights
-                                </td>
-
-                                <td>
-                                    Lab 4 (01)
-                                </td>
-
-                                <td>
-                                    Electrical
-                                </td>
-
-                                <td>
-                                    <span class="status pending">
-                                        Pending
-                                    </span>
-                                </td>
-
-                            </tr>
-
+                            <?php foreach ($requests as $r): ?>
+                                <tr>
+                                    <td><?= e($r['id']) ?></td>
+                                    <td><b><?= e($r['issue']) ?></b></td>
+                                    <td><?= e($r['equipment']) ?></td>
+                                    <td><?= e($r['lab']) ?></td>
+                                    <td><?= e($r['category']) ?></td>
+                                    <td><?= statusBadge($r['status']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
-
                     </table>
-
                 </div>
-
             </section>
-
-
 
             <!-- RECENT ACTIVITIES -->
             <aside class="panel activities-panel">
-
-                <h2>
-                    Recent Activities
-                </h2>
-
-
-                <div class="activity">
-
-                    <b>
-                        Request MT-0034 completed
-                    </b>
-
-                    <small>
-                        9:10 AM
-                    </small>
-
-                </div>
-
-
-                <div class="activity">
-
-                    <b>
-                        Request MT-0032 assigned to Maria
-                    </b>
-
-                    <small>
-                        8:45 AM
-                    </small>
-
-                </div>
-
-
-                <div class="activity">
-
-                    <b>
-                        Request MT-0031 updated
-                    </b>
-
-                    <small>
-                        7:45 AM
-                    </small>
-
-                </div>
-
+                <h2>Recent Activities</h2>
+                <?php foreach ($activities as $activity): ?>
+                    <div class="activity">
+                        <b><?= e($activity['text']) ?></b>
+                        <small><?= e($activity['time']) ?></small>
+                    </div>
+                <?php endforeach; ?>
             </aside>
 
         </div>
-
     </div>
-
-</body>
-
-</html>
+<?php renderFoot(); ?>

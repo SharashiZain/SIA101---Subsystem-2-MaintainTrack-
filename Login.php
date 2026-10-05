@@ -37,9 +37,7 @@ unset($_SESSION['login_error']);
 $dashboardMap = [
     'admin' => 'Admin/Pages/Dashboard.php',
     'maintenance' => 'Maintenance/Pages/Dashboard.php',
-    'regular' => file_exists(__DIR__ . '/Regular/Pages/Dashboard.php')
-        ? 'Regular/Pages/Dashboard.php'
-        : 'Regular/Pages/reg_user_dashboard.php',
+    'regular' => 'Regular/Pages/Dashboard.php',
 ];
 
 $targetPage = $dashboardMap[$_SESSION['role']] ?? 'Index.php';

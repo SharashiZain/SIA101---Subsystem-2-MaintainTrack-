@@ -1,0 +1,172 @@
+/* SETTINGS STYLES (Consolidated with base.css) */
+.admin-settings {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  animation: fadeUp 0.5s ease both;
+}
+
+.settings-panel {
+  padding: var(--card-padding);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-panel-heading {
+  padding-bottom: calc(18px * var(--content-scale, 1));
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.settings-panel-heading h2 {
+  margin: 0;
+  color: var(--text-dark-blue);
+  font-size: calc((18px) * var(--font-scale, 1));
+  font-weight: 700;
+}
+
+.settings-panel-heading p {
+  margin: calc(6px * var(--content-scale, 1)) 0 0;
+  color: var(--text-muted);
+  font-size: calc((14px) * var(--font-scale, 1));
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--content-spacing);
+  padding-top: var(--content-spacing);
+}
+
+.settings-field {
+  width: 100%;
+}
+
+.settings-field label {
+  display: block;
+  margin-bottom: calc(8px * var(--content-scale, 1));
+  color: var(--text-main);
+  font-size: calc((13px) * var(--font-scale, 1));
+  font-weight: 700;
+}
+
+.settings-field-label {
+  display: block;
+  margin-bottom: calc(8px * var(--content-scale, 1));
+  color: var(--text-main);
+  font-size: calc((13px) * var(--font-scale, 1));
+  font-weight: 700;
+}
+
+.settings-field .settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--content-scale, 1));
+  margin: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.settings-checkbox input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  accent-color: var(--primary-blue);
+}
+
+.settings-checkbox input:focus-visible {
+  outline: 3px solid rgba(29, 79, 145, 0.28);
+  outline-offset: 2px;
+}
+
+.settings-field-help {
+  margin: calc(6px * var(--content-scale, 1)) 0 0;
+  color: var(--text-muted);
+  font-size: calc((12px) * var(--font-scale, 1));
+}
+
+.settings-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 calc(14px * var(--content-scale, 1));
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--text-main);
+  font: inherit;
+  font-size: calc((14px) * var(--font-scale, 1));
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.settings-field select:focus-visible,
+.settings-save:focus-visible {
+  outline: 3px solid rgba(29, 79, 145, 0.28);
+  outline-offset: 2px;
+  border-color: var(--accent-light);
+}
+
+.settings-save {
+  min-height: 44px;
+  padding: 0 calc(24px * var(--content-scale, 1));
+  border: 0;
+  border-radius: 10px;
+  background: var(--primary-blue);
+  color: #ffffff;
+  font: inherit;
+  font-size: calc((14px) * var(--font-scale, 1));
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.settings-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-back {
+  display: inline-flex;
+  margin-bottom: var(--content-spacing);
+  color: var(--primary-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.settings-back:hover {
+  text-decoration: underline;
+}
+
+.settings-save:hover {
+  background: var(--primary-blue-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(29, 79, 145, 0.25);
+}
+
+.settings-status {
+  margin: calc(18px * var(--content-scale, 1)) 0 0;
+  color: var(--status-green);
+  font-size: calc((13px) * var(--font-scale, 1));
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .settings-panel {
+    padding: calc(20px * var(--content-scale, 1));
+  }
+
+  .settings-form {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-field,
+  .settings-save {
+    width: 100%;
+  }
+}

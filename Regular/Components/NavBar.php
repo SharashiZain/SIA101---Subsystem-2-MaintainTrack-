@@ -1,6 +1,17 @@
-<link rel="stylesheet" href="../Components/css/Navbar.css">
+<?php
+require_once __DIR__ . '/../../Components/layout.php';
+$menuItems = roleNavigationItems('regular');
+[$userName, $userRoleLabel, $userInitials] = roleUser('regular');
+$regularLayout = $_COOKIE['regular_layout'] ?? 'sidebar';
+if ($regularLayout === 'sidebar') {
+    include __DIR__ . '/Sidebar.php';
+    return;
+}
+?>
 
-<header class="topnav">
+<link rel="stylesheet" href="<?= e(appAssetUrl('Regular/Components/css/Navbar.css')) ?>">
+
+<header class="topnav" data-layout-role="regular">
 
     <div class="topnav-inner">
 
@@ -8,11 +19,11 @@
         <button
             class="brand"
             type="button"
-            onclick="window.location.href='reg_user_dashboard.php'"
+            onclick="window.location.href='<?= e(rolePageUrl('regular', 'Dashboard.php')) ?>'"
         >
 
             <div class="brand-logo">
-                <img src="../../Components/img/logo.png" alt="MaintainTrack Logo">
+                <img src="<?= e(appUrl('Components/img/Logo.png')) ?>" alt="MaintainTrack Logo">
             </div>
 
             <div class="brand-name">
@@ -21,110 +32,34 @@
 
         </button>
 
-        <!-- MENU -->
         <nav class="topnav-menu">
-
-            <!-- Dashboard -->
-            <button class="menu-item" data-page="reg_user_dashboard.php">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M3 10.5 12 3l9 7.5"></path>
-                        <path d="M5 9.5V21h14V9.5"></path>
-                        <path d="M9 21v-7h6v7"></path>
-                    </svg>
-                </span>
-                <span>Dashboard</span>
-            </button>
-
-            <!-- Reports -->
-            <button class="menu-item" data-page="Report.php">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M4 5h16v14H4z"></path>
-                        <path d="M8 9h8"></path>
-                        <path d="M8 13h5"></path>
-                    </svg>
-                </span>
-                <span>Reports</span>
-            </button>
-
-            <!-- History -->
-            <button class="menu-item" data-page="History.php">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M3 12a9 9 0 1 0 9-9"></path>
-                        <path d="M3 4v8h8"></path>
-                    </svg>
-                </span>
-                <span>History</span>
-            </button>
-
-            <!-- Request -->
-            <button class="menu-item" data-page="Request.php">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M4 5h16v14H4z"></path>
-                        <path d="M8 12h8"></path>
-                        <path d="M12 8v8"></path>
-                    </svg>
-                </span>
-                <span>Request</span>
-            </button>
-
-            <!-- Notification -->
-            <button class="menu-item" data-page="Notification.php">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-                        <path d="M10 21h4"></path>
-                    </svg>
-                    <span class="notification-dot"></span>
-                </span>
-                <span>Notification</span>
-            </button>
-
-            <!-- Maintenance -->
-            <button class="menu-item" data-page="Maintenance.php">
-                <span class="menu-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 3v18"></path>
-                        <path d="M5 8h14"></path>
-                        <path d="M5 16h14"></path>
-                        <path d="M7 3h10"></path>
-                    </svg>
-                </span>
-                <span>Maintenance</span>
-            </button>
-
+            <?php foreach ($menuItems as $item): ?>
+                <button class="menu-item" data-page="<?= e($item['href']) ?>" data-href="<?= e(roleNavigationUrl('regular', $item['href'])) ?>" aria-label="<?= e($item['label']) ?>" type="button">
+                    <span class="menu-icon">
+                        <svg viewBox="0 0 24 24"><?= $item['icon'] ?></svg>
+                        <?php if (($item['indicator'] ?? '') === 'dot'): ?><span class="notification-dot"></span><?php endif; ?>
+                    </span>
+                    <span><?= e($item['label']) ?></span>
+                </button>
+            <?php endforeach; ?>
         </nav>
 
         <!-- PROFILE AREA -->
         <div class="topnav-profile-wrapper">
-
-            <div class="profile-menu" id="profileMenu">
-
-                <a href="Profile.php">
-                    Edit Profile
-                </a>
-
-                <a href="../../index.php" class="profile-logout">
-                    Log out
-                </a>
-
-            </div>
+            <?php renderRoleProfileMenu('regular'); ?>
 
             <button
                 class="topnav-profile"
                 type="button"
                 id="profileTrigger"
+                aria-expanded="false"
+                aria-controls="profileMenu"
             >
-                <div class="profile-avatar">
-                    JD
-                </div>
+                <div class="profile-avatar"><?= e($userInitials) ?></div>
 
                 <div class="profile-info">
-                    <strong>Juan Dela Cruz</strong>
-                    <span>Regular User</span>
+                    <strong><?= e($userName) ?></strong>
+                    <span><?= e($userRoleLabel) ?></span>
                 </div>
 
                 <span class="profile-chevron">▾</span>
@@ -137,4 +72,4 @@
 </header>
 
 
-<script src="../Components/js/Navbar.js"></script>
+<script src="<?= e(appAssetUrl('Components/js/RoleNavigation.js')) ?>"></script>

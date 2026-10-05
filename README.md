@@ -1,102 +1,85 @@
 # MaintainTrack
 
-MaintainTrack is a barangay maintenance and reporting system built with plain PHP, HTML, CSS, and JavaScript. It supports three user roles: Admin, Maintenance, and Regular User, each with a role-based dashboard and navigation experience.
+MaintainTrack is a PHP demo for reporting and coordinating barangay maintenance work. It has three role areas: Admin, Maintenance, and Regular User. Shared layout, navigation, and styling helpers live in the root `Components/` folder.
 
-## Project Overview
+## Run Locally
 
-This project is designed for a barangay management workflow where:
+1. Put the project in the XAMPP web root, for example `C:\xampp\htdocs\Sia`.
+2. Start Apache in XAMPP. MySQL is not required by the current code.
+3. Open `http://localhost/Sia/Index.php`.
+4. Sign in with one of the demo accounts:
 
-- Admin users can manage requests, assignments, equipment, reports, notifications, and users.
-- Maintenance staff can view assigned tasks and task updates.
-- Regular users can submit maintenance concerns and monitor their request progress.
+| Role         | Username | Password    |
+| ------------ | -------- | ----------- |
+| Admin        | `admin`  | `admin123`  |
+| Regular User | `user`   | `user123`   |
+| Maintenance  | `worker` | `worker123` |
 
-The app uses a modular structure with separate folders for each role and shared components.
+These accounts are hard-coded for local demonstration only; do not use these credentials in a deployed system.
 
-## Features
+## How a Request Flows
 
-- Role-based login and dashboard flow
-- Separate UI for Admin, Maintenance, and Regular users
-- Top navigation bars and profile menus
-- Request, task, report, notification, and user management screens
-- Responsive layout styling with custom CSS per section
-- Local PHP session-based authentication
+1. `Index.php` displays the login form and reads any login error from the PHP session.
+2. The form posts to `Login.php`. Its `$users` array contains the demo credentials and role names.
+3. On success, `Login.php` stores the username and role in `$_SESSION`, then redirects to that role's dashboard. Failed logins return to `Index.php` with an error message.
+4. Each role page loads the shared helpers from `Components/layout.php`. `renderHead()` opens the document, loads the shared base CSS plus that page's CSS, and includes the correct role navigation. The page calls `renderPageHeader()` for its heading and `renderFoot()` to close the document.
+5. Navigation items are defined once in `roleNavigationItems()` in `Components/layout.php`. Each role's sidebar is the default; users can switch to top navigation from the profile menu. `Components/js/RoleNavigation.js` handles active links, profile menus, and switching layouts.
+6. The shared profile dropdown is rendered by `renderRoleProfileMenu()` and contains Edit Profile, Settings, and Logout. Settings opens `Components/Settings.php`; the authenticated session role determines its navigation, with the `role` query parameter used only when there is no valid session role. Role-specific `Pages/Setting.php` files have been removed. The page previews font and content-size changes immediately, then stores preferences in browser cookies. `RoleNavigation.js` reapplies them on page load. Logout clears the PHP session through `Logout.php` before returning to the login screen.
 
-## Tech Stack
+## Where Things Come From
 
-- PHP
-- HTML
-- CSS
-- JavaScript
-- XAMPP / Apache local environment
+| Change this                                                       | Edit here                                                                                             |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Demo usernames, passwords, role assignment, or dashboard redirect | `$users` and `$dashboardMap` in `Login.php`                                                           |
+| Display name, role label, or initials                             | `roleUser()` in `Components/layout.php`                                                               |
+| Menu labels, destinations, or icons                               | `roleNavigationItems()` in `Components/layout.php`                                                    |
+| Shared page shell, escaping, role header, or status helpers       | `Components/layout.php`                                                                               |
+| Role-specific dashboard, table, or notification sample values     | Arrays near the top of the relevant file in `Admin/Pages/`, `Maintenance/Pages/`, or `Regular/Pages/` |
+| A page's colors and layout                                        | Its matching stylesheet under that role's `Components/css/` folder                                    |
+| Shared base styles, sidebar styles, or settings styles            | `Components/css/base.css`, `Components/css/Sidebar.css`, or `Components/Setting.css`                  |
+| Shared images or JavaScript                                       | `Components/img/` or `Components/js/`                                                                 |
+| Navigation, font, content-size, sidebar-size, and background      | `Components/Settings.php`; cookies are scoped by role                                                 |
+| Font scaling and content density tokens                           | `Components/css/base.css`; `--base-font-size`, `--font-scale`, `--content-scale`, and spacing tokens  |
 
-## Project Structure
+Font size and content size each accept `small`, `medium`, or `large`. Sidebar size accepts `full` or `compact`; a separate Retractable sidebar checkbox collapses to the logo and an expand button, then reveals navigation on hover or button activation. On touch/mobile devices, use the expand button. Background choices are Default, Barangay building, Blurry cloud, Classic blue, Classic waves, and Terrain map; the existing radial background remains the default. Layout, font, content, sidebar-size, retractable, and background cookies are role-specific (`admin_*`, `regular_*`, `maintenance_*`), so changing Admin preferences does not alter Regular or Maintenance. Unset preferences default to Sidebar, Full sidebar, Medium font, Medium content, Retractable off, and Default background.
+
+Dashboard and list values are currently demonstration data stored directly in page-level PHP arrays. For example, the Admin dashboard defines `$stats` and `$requests` in `Admin/Pages/Dashboard.php`; Regular and Maintenance pages define their own arrays. Editing those arrays changes the displayed sample values.
+
+## Project Map
 
 ```text
 Sia/
-├── Index.php                  # Login landing page
-├── Login.php                  # Authentication logic
-├── Components/                # Shared CSS, JS, and images
-│   ├── css/
-│   ├── js/
-│   └── img/
+├── Index.php                  # Login screen
+├── Login.php                  # Demo credential check and role redirect
+├── Components/
+│   ├── layout.php             # Shared PHP helpers and role navigation data
+│   ├── Setting.css            # Shared settings styles
+│   ├── css/                   # Shared base and sidebar styles
+│   ├── img/                   # Shared images
+│   └── js/RoleNavigation.js   # Shared role navigation behavior
 ├── Admin/
-│   ├── Components/
-│   ├── Pages/
-│   └── ...
+│   ├── Components/            # Admin top bar, sidebar, and CSS
+│   └── Pages/                 # Admin dashboards and management screens
 ├── Maintenance/
-│   ├── Components/
-│   ├── Pages/
-│   └── ...
+│   ├── Components/            # Maintenance top bar, sidebar, and CSS
+│   └── Pages/                 # Maintenance dashboards and work screens
 ├── Regular/
-│   ├── Components/
-│   ├── Pages/
-│   └── ...
-├── Config/
-├── README.md
-└── css-redesigned.zip
+│   ├── Components/            # Regular-user top bar, sidebar, and CSS
+│   └── Pages/                 # Regular-user dashboard and request screens
+└── README.md
 ```
 
-## Default Login Accounts
+## Add a Page
 
-The system uses a simple in-memory user list defined in `Login.php`.
+1. Create the PHP page under the correct role's `Pages/` folder.
+2. Require the shared helpers with `require_once '../../Components/layout.php';`.
+3. Call `renderHead($title, $pageCss, $role)`, render the page content, then call `renderFoot()`.
+4. Add its link to the correct role's list in `roleNavigationItems()` if it should appear in the navigation.
+5. Add page-specific styling under that role's `Components/css/` folder.
 
-| Role         | Username | Password  |
-| ------------ | -------- | --------- |
-| Admin        | admin    | admin123  |
-| Regular User | user     | user123   |
-| Maintenance  | worker   | worker123 |
+## Demo Limitations
 
-## How to Run
-
-1. Place the project folder in your local web server root, such as:
-   - `C:/xampp/htdocs/Sia`
-2. Start Apache and MySQL using XAMPP.
-3. Open the browser and go to:
-   - `http://localhost/Sia/Index.php`
-4. Log in using one of the default accounts above.
-
-## Role Access Flow
-
-When a user logs in, the app redirects them to the matching role dashboard:
-
-- Admin → `Admin/Pages/Dashboard.php`
-- Maintenance → `Maintenance/Pages/Dashboard.php`
-- Regular → `Regular/Pages/Dashboard.php` or `Regular/Pages/reg_user_dashboard.php`
-
-## Notes
-
-- This project is a front-end-heavy PHP application and does not use a database for persistence.
-- User credentials are hardcoded in `Login.php` for demo/testing purposes.
-- CSS styling is separated by section and role, which makes it easy to customize the interface.
-
-## Recommended Improvements
-
-- Add a real database and authentication system
-- Move user credentials to environment variables or a secure database table
-- Add validation for requests and maintenance tasks
-- Implement CRUD operations for reports, facilities, and user profiles
-- Add file uploads and image handling for repair documentation
-
-## License
-
-This project is intended for academic / local project use and has no formal open-source license assigned.
+- There is no database connection or persistent request/task storage. Most forms and tables are interface demonstrations; page arrays provide their sample data.
+- Login checks the hard-coded array and sets session values, but role pages do not currently enforce authenticated access or authorize actions. This is not production-ready authentication.
+- `Config/` is currently empty.
+- Use MySQL only if you later add database-backed persistence and configure the application to connect to it.
