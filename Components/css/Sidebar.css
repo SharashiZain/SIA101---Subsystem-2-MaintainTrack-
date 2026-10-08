@@ -1,0 +1,375 @@
+:root {
+  --sidebar-width: 76px;
+  --sidebar-expanded-width: 252px;
+  --sidebar-bg: #12355f;
+  --sidebar-accent: #1d4f91;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #c9dceb;
+  --sidebar-active: #ffffff;
+  --sidebar-active-text: #1d4f91;
+}
+
+body.has-role-sidebar {
+  padding-left: calc(
+    var(--sidebar-width) + calc(16px * var(--content-scale, 1))
+  ) !important;
+  padding-top: 0 !important;
+}
+
+/* The sidebar is always a slim rail. It widens over the page on hover. */
+.role-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1100;
+  box-sizing: border-box;
+  width: var(--sidebar-width);
+  /* (rail width - 40px logo) / 2 keeps the logo perfectly centered */
+  padding: var(--content-spacing) calc((var(--sidebar-width) - 40px) / 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  overflow: visible;
+  color: var(--sidebar-text);
+  background: linear-gradient(165deg, var(--sidebar-bg), var(--sidebar-accent));
+  box-shadow: 8px 0 24px rgba(18, 63, 104, 0.16);
+  transition:
+    width 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.role-sidebar * {
+  box-sizing: border-box;
+}
+
+/* Hover (or keyboard focus, or open profile menu) shows full details */
+.role-sidebar:hover,
+.role-sidebar:has(:focus-visible),
+.role-sidebar:has(.sidebar-user-menu.open) {
+  width: var(--sidebar-expanded-width);
+  box-shadow: 12px 0 32px rgba(18, 63, 104, 0.28);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--content-scale, 1));
+  min-height: 44px;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: calc((17px) * var(--font-scale, 1));
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidebar-brand-mark {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: calc((20px) * var(--font-scale, 1));
+  font-weight: 800;
+}
+
+.sidebar-brand-mark svg,
+.sidebar-brand-mark img {
+  width: 100%;
+  height: 100%;
+  padding: calc(7px * var(--content-scale, 1));
+  object-fit: contain;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--content-scale, 1));
+}
+
+.role-sidebar .menu-item {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--content-scale, 1));
+  /* 9px + 22px icon + 9px = 40px, so the icon is centered in the rail */
+  padding: 0 9px;
+  overflow: hidden;
+  border-radius: 7px;
+  color: var(--sidebar-muted);
+  font-size: calc((13px) * var(--font-scale, 1));
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.role-sidebar .menu-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text);
+}
+
+.role-sidebar .menu-item.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-active-text);
+}
+
+.role-sidebar .menu-icon {
+  width: 22px;
+  height: 22px;
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-sidebar .menu-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.role-sidebar .menu-badge {
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #ff7a5c;
+  color: #ffffff;
+  font-size: calc((10px) * var(--font-scale, 1));
+  font-weight: 800;
+}
+
+.role-sidebar .notification-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--sidebar-bg);
+  border-radius: 50%;
+  background: #ff7a5c;
+}
+
+.sidebar-account {
+  position: relative;
+  z-index: 1300;
+  margin-top: auto;
+  padding-top: var(--content-spacing);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--content-scale, 1));
+  width: 100%;
+  min-width: 0;
+  /* 2px + 36px avatar + 2px = 40px, so the avatar is centered in the rail */
+  padding: 0 2px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sidebar-user:hover .profile-summary strong,
+.sidebar-user:focus-visible .profile-summary strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sidebar-user:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+}
+
+.sidebar-user-chevron {
+  margin-left: auto;
+  color: var(--sidebar-muted);
+  transition: transform 0.18s ease;
+}
+
+.sidebar-user[aria-expanded="true"] .sidebar-user-chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-user-menu {
+  position: absolute;
+  z-index: 1301;
+  bottom: 0;
+  /* keeps a 12px gap from the sidebar edge in both rail and expanded states */
+  left: calc(100% + ((var(--sidebar-width) - 40px) / 2) + 12px);
+  display: none;
+  width: min(220px, calc(100vw - var(--sidebar-expanded-width) - 28px));
+  padding: calc(8px * var(--content-scale, 1));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: var(--sidebar-bg);
+  box-shadow: 0 8px 24px rgba(18, 63, 104, 0.24);
+}
+
+.sidebar-user-menu.open {
+  display: block;
+}
+
+.sidebar-user-menu a {
+  display: block;
+  padding: calc(9px * var(--content-scale, 1))
+    calc(10px * var(--content-scale, 1));
+  border-radius: 6px;
+  color: var(--sidebar-muted);
+  font-size: calc((12px) * var(--font-scale, 1));
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sidebar-user-menu a:hover,
+.sidebar-user-menu a:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sidebar-text);
+}
+
+.sidebar-user-menu .logout-link {
+  color: #ffd1cb;
+}
+
+.role-sidebar .profile-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e8eff8;
+  color: #1d4f91;
+  font-size: calc((12px) * var(--font-scale, 1));
+  font-weight: 800;
+}
+
+.role-sidebar .profile-summary {
+  display: flex;
+  flex-direction: column;
+  gap: calc(3px * var(--content-scale, 1));
+  overflow: hidden;
+}
+
+.role-sidebar .profile-summary strong,
+.role-sidebar .profile-summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-sidebar .profile-summary strong {
+  font-size: calc((12px) * var(--font-scale, 1));
+}
+
+.role-sidebar .profile-summary small {
+  color: var(--sidebar-muted);
+  font-size: calc((10px) * var(--font-scale, 1));
+}
+
+/* =========================================
+   LABELS: hidden on the rail, fade in on hover
+========================================= */
+
+.sidebar-brand > span:not(.sidebar-brand-mark),
+.role-sidebar .menu-item > span:not(.menu-icon),
+.role-sidebar .sidebar-user .profile-summary,
+.role-sidebar .sidebar-user-chevron {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.role-sidebar:hover .sidebar-brand > span:not(.sidebar-brand-mark),
+.role-sidebar:hover .menu-item > span:not(.menu-icon),
+.role-sidebar:hover .sidebar-user .profile-summary,
+.role-sidebar:hover .sidebar-user-chevron,
+.role-sidebar:has(:focus-visible)
+  .sidebar-brand
+  > span:not(.sidebar-brand-mark),
+.role-sidebar:has(:focus-visible) .menu-item > span:not(.menu-icon),
+.role-sidebar:has(:focus-visible) .sidebar-user .profile-summary,
+.role-sidebar:has(:focus-visible) .sidebar-user-chevron,
+.role-sidebar:has(.sidebar-user-menu.open)
+  .sidebar-brand
+  > span:not(.sidebar-brand-mark),
+.role-sidebar:has(.sidebar-user-menu.open) .menu-item > span:not(.menu-icon),
+.role-sidebar:has(.sidebar-user-menu.open) .sidebar-user .profile-summary,
+.role-sidebar:has(.sidebar-user-menu.open) .sidebar-user-chevron {
+  opacity: 1;
+  transition-delay: 0.08s;
+}
+
+@media (max-width: 700px) {
+  body.has-role-sidebar {
+    padding-left: calc(84px * var(--content-scale, 1)) !important;
+  }
+
+  .role-sidebar {
+    padding-top: calc(16px * var(--content-scale, 1));
+    padding-bottom: calc(16px * var(--content-scale, 1));
+    gap: calc(20px * var(--content-scale, 1));
+  }
+
+  .sidebar-user-menu {
+    width: min(180px, calc(100vw - 104px));
+  }
+}
+
+@media (max-height: 620px) {
+  .role-sidebar {
+    padding-top: calc(10px * var(--content-scale, 1));
+    padding-bottom: calc(10px * var(--content-scale, 1));
+    gap: calc(10px * var(--content-scale, 1));
+  }
+
+  .sidebar-menu {
+    gap: calc(2px * var(--content-scale, 1));
+  }
+
+  .role-sidebar .menu-item {
+    min-height: 38px;
+  }
+
+  .sidebar-account {
+    padding-top: calc(10px * var(--content-scale, 1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-sidebar,
+  .sidebar-brand > span:not(.sidebar-brand-mark),
+  .role-sidebar .menu-item > span:not(.menu-icon),
+  .role-sidebar .sidebar-user .profile-summary,
+  .role-sidebar .sidebar-user-chevron {
+    transition: none;
+  }
+}
