@@ -1,0 +1,520 @@
+/* =========================================
+   REGULAR USER DASHBOARD STYLES
+========================================= */
+
+.page {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: calc(24px * var(--content-scale, 1))
+    calc(30px * var(--content-scale, 1)) calc(50px * var(--content-scale, 1));
+}
+
+/* =========================================
+   WELCOME CARD — dark navy banner
+========================================= */
+
+.welcome-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: calc(28px * var(--content-scale, 1))
+    calc(32px * var(--content-scale, 1));
+  background: linear-gradient(100deg, #123f68 0%, #155b91 55%, #1b69a3 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  margin-bottom: calc(20px * var(--content-scale, 1));
+  box-shadow: 0 10px 28px rgba(18, 63, 104, 0.18);
+  position: relative;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.welcome-card::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -60px;
+  bottom: -110px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0) 70%
+  );
+  pointer-events: none;
+}
+
+.welcome-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 220px;
+}
+
+.welcome-content h2 {
+  margin: 0 0 6px;
+  font-size: calc((24px) * var(--font-scale, 1));
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.welcome-content p {
+  margin: 0;
+  font-size: calc((14px) * var(--font-scale, 1));
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.5;
+}
+
+/* =========================================
+   REPORT AN ISSUE BUTTON (high visibility)
+========================================= */
+
+.report-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #ff9a1f 0%, #ff7a00 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: calc((16px) * var(--font-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    0 8px 20px rgba(255, 122, 0, 0.4),
+    0 0 0 4px rgba(255, 154, 31, 0.18);
+  transition: all 0.25s ease;
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+
+.report-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.report-button-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.report-button:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 12px 28px rgba(255, 122, 0, 0.55),
+    0 0 0 6px rgba(255, 154, 31, 0.22);
+  animation-play-state: paused;
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 8px 20px rgba(255, 122, 0, 0.4),
+      0 0 0 4px rgba(255, 154, 31, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 8px 20px rgba(255, 122, 0, 0.4),
+      0 0 0 8px rgba(255, 154, 31, 0.08);
+  }
+}
+
+/* =========================================
+   SUMMARY LINE
+========================================= */
+
+.summary-line {
+  display: flex;
+  align-items: center;
+  gap: calc(18px * var(--content-scale, 1));
+  padding: 0;
+  background: transparent;
+  border: 0;
+  margin: 0 auto 0 calc(8px * var(--content-scale, 1));
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.summary-item strong {
+  font-size: calc((18px) * var(--font-scale, 1));
+  font-weight: 800;
+  color: var(--text-dark-blue, #12355f);
+  line-height: 1;
+}
+
+.summary-item strong.orange {
+  color: #ea580c;
+}
+.summary-item strong.purple {
+  color: #7c3aed;
+}
+.summary-item strong.green {
+  color: #059669;
+}
+
+.summary-item span {
+  font-size: calc((12px) * var(--font-scale, 1));
+  color: var(--text-muted, #687985);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* =========================================
+   PANEL
+========================================= */
+
+.panel {
+  background: #ffffff;
+  border: 1px solid var(--border-color, #d9e5ec);
+  border-radius: 18px;
+  padding: calc(24px * var(--content-scale, 1));
+  box-shadow: 0 2px 6px rgba(18, 63, 104, 0.06);
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: calc(18px * var(--content-scale, 1));
+  padding-bottom: calc(14px * var(--content-scale, 1));
+  border-bottom: 1px solid var(--line-soft, #e7eef3);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: calc((16px) * var(--font-scale, 1));
+  font-weight: 800;
+  color: var(--text-dark-blue, #12355f);
+}
+
+.panel-link {
+  color: var(--primary-blue, #1769aa);
+  font-size: calc((13px) * var(--font-scale, 1));
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.panel-link:hover {
+  text-decoration: underline;
+}
+
+/* =========================================
+   REQUEST LIST
+========================================= */
+
+.request-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(10px * var(--content-scale, 1));
+}
+
+.request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: calc(16px * var(--content-scale, 1))
+    calc(20px * var(--content-scale, 1));
+  background: #ffffff;
+  border: 1px solid var(--border-color, #d9e5ec);
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.request-card:hover {
+  transform: translateY(-2px);
+  border-color: #a9c7db;
+  box-shadow: 0 6px 16px rgba(18, 63, 104, 0.08);
+}
+
+.request-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.request-id {
+  font-size: calc((11px) * var(--font-scale, 1));
+  color: var(--text-muted, #687985);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.request-title {
+  font-size: calc((15px) * var(--font-scale, 1));
+  font-weight: 800;
+  color: var(--text-dark-blue, #12355f);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.request-details {
+  font-size: calc((12px) * var(--font-scale, 1));
+  color: var(--text-muted, #687985);
+}
+
+.request-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.chevron {
+  font-size: 22px;
+  color: #94a3b8;
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* =========================================
+   STATUS PILLS
+========================================= */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: calc((11px) * var(--font-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status.in-progress {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+.status.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 16px 40px;
+  }
+  .welcome-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .report-button {
+    width: 100%;
+    justify-content: center;
+  }
+  .summary-line {
+    gap: 16px;
+  }
+  .summary-item strong {
+    font-size: calc((16px) * var(--font-scale, 1));
+  }
+}
+/* =========================================
+   HERO CARD — one card, uses the page-header design
+   The page header's own background fills the whole card;
+   the welcome banner sits on top of it (transparent).
+========================================= */
+
+.hero-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  margin-bottom: calc(20px * var(--content-scale, 1));
+  box-shadow: 0 10px 28px rgba(18, 63, 104, 0.18);
+}
+
+/* header = background of the whole card, compact content at the top */
+.hero-card .page-header {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  align-self: stretch;
+  align-content: flex-start !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+  gap: 16px !important;
+  padding: calc(16px * var(--content-scale, 1))
+    calc(28px * var(--content-scale, 1)) 0 !important;
+}
+
+.hero-card .page-header > :first-child {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-items: center !important;
+  min-height: calc(42px * var(--content-scale, 1));
+  column-gap: 14px;
+  row-gap: 2px;
+}
+
+.hero-card .page-header h1 {
+  white-space: nowrap;
+  font-size: calc((20px) * var(--font-scale, 1)) !important;
+  margin: 0 !important;
+}
+
+.hero-card .page-header p {
+  font-size: calc((11px) * var(--font-scale, 1)) !important;
+  margin: 0 !important;
+}
+
+/* welcome banner sits below the compact header, no card of its own */
+.hero-card .welcome-card {
+  grid-column: 1;
+  grid-row: 2;
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: calc(60px * var(--content-scale, 1))
+    calc(28px * var(--content-scale, 1)) calc(24px * var(--content-scale, 1));
+}
+
+.hero-card .welcome-card::after {
+  display: none;
+}
+
+.hero-card .welcome-content h2 {
+  font-size: calc((28px) * var(--font-scale, 1));
+}
+
+.panel-head .summary-line {
+  justify-content: center;
+}
+
+/* =========================================
+   DECLUTTERED BANNER
+   Keep: page title, greeting, one clear button.
+========================================= */
+
+.hero-card .page-header > :not(:first-child),
+.hero-card .page-header p {
+  display: none !important;
+}
+
+.hero-card .page-header {
+  padding-top: calc(22px * var(--content-scale, 1)) !important;
+}
+
+.hero-card .page-header h1 {
+  font-size: calc((12px) * var(--font-scale, 1)) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.hero-card .welcome-card {
+  padding: calc(52px * var(--content-scale, 1))
+    calc(32px * var(--content-scale, 1)) calc(28px * var(--content-scale, 1));
+}
+
+.hero-card .welcome-content h2 {
+  font-size: calc((30px) * var(--font-scale, 1));
+  margin-bottom: 8px;
+}
+
+/* =========================================
+   STAT CHIPS — more noticeable
+========================================= */
+
+.summary-line {
+  gap: calc(10px * var(--content-scale, 1));
+}
+
+.summary-item {
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: #eef3f8;
+  border: 1.5px solid #cfdce8;
+  box-shadow: 0 2px 6px rgba(18, 63, 104, 0.08);
+}
+
+.summary-item strong {
+  font-size: calc((22px) * var(--font-scale, 1));
+}
+
+.summary-item span {
+  font-size: calc((12px) * var(--font-scale, 1));
+  font-weight: 800;
+  color: var(--text-dark-blue, #12355f);
+}
+
+.summary-item:has(strong.orange) {
+  background: #fff1e4;
+  border-color: #f7b985;
+}
+.summary-item:has(strong.purple) {
+  background: #f1eaff;
+  border-color: #c7b0f5;
+}
+.summary-item:has(strong.green) {
+  background: #e3f8ef;
+  border-color: #8fd9b8;
+}
+
+/* =========================================
+   STAT CHIPS — float on hover
+========================================= */
+
+.summary-item {
+  cursor: default;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.summary-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(18, 63, 104, 0.18);
+}

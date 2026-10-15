@@ -1,0 +1,544 @@
+/* =========================================
+   REPORT PAGE STYLES (ADMIN)
+========================================= */
+
+@keyframes shimmerWave {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* =========================================
+   CONTAINER
+========================================= */
+
+.container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: calc(24px * var(--content-scale, 1)) calc(30px * var(--content-scale, 1)) calc(40px * var(--content-scale, 1));
+}
+
+/* =========================================
+   SECTION TITLE — visible on dark background
+========================================= */
+
+/* =========================================
+   SECTION TITLE — always visible
+========================================= */
+
+.section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(8px * var(--content-scale, 1));
+    font-size: calc((13px) * var(--font-scale, 1));
+    color: #ffffff;
+    margin-bottom: calc(12px * var(--content-scale, 1));
+    padding: calc(8px * var(--content-scale, 1)) calc(16px * var(--content-scale, 1));
+    background: linear-gradient(135deg, #123f68, #155b91);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(18, 63, 104, 0.3);
+}
+
+.section-title::before {
+    content: "";
+    width: 4px;
+    height: 14px;
+    border-radius: 4px;
+    background: #ffffff;
+}
+/* =========================================
+   REPORT CARDS
+========================================= */
+
+.report-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: calc(14px * var(--content-scale, 1));
+    margin-bottom: calc(20px * var(--content-scale, 1));
+}
+
+.report-card {
+    --c: #1d4f91;
+    --c-soft: #e8eff8;
+    --c-ink: #12355f;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+    padding: calc(16px * var(--content-scale, 1));
+    border-radius: 16px;
+    border: 1px solid var(--border-color, #d9e5ec);
+    box-shadow: inset 0 3px 0 var(--c), 0 2px 6px rgba(18, 63, 104, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.report-card:nth-child(1) { --c: #1d4f91; --c-soft: #e8eff8; --c-ink: #12355f; }
+.report-card:nth-child(2) { --c: #ea580c; --c-soft: #ffedd5; --c-ink: #c2410c; }
+.report-card:nth-child(3) { --c: #7c3aed; --c-soft: #f3e8ff; --c-ink: #6d28d9; }
+.report-card:nth-child(4) { --c: #059669; --c-soft: #dcfce7; --c-ink: #065f46; }
+
+.report-card > * { position: relative; z-index: 1; }
+
+.report-card:hover {
+    transform: translateY(-3px);
+    box-shadow: inset 0 3px 0 var(--c), 0 6px 16px rgba(18, 63, 104, 0.12);
+}
+
+.report-card.selected {
+    border-color: var(--c);
+    background: linear-gradient(180deg, #ffffff, var(--c-soft));
+    box-shadow: inset 0 3px 0 var(--c), 0 8px 20px rgba(29, 79, 145, 0.18);
+}
+
+.report-card.selected::before {
+    content: "✓";
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    background: var(--c);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.report-card::after {
+    content: "";
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    right: -40px;
+    bottom: -50px;
+    border-radius: 50%;
+    background: var(--c-soft);
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.report-card h3 {
+    font-size: calc((14px) * var(--font-scale, 1));
+    color: var(--c-ink);
+    margin: 0 0 calc(4px * var(--content-scale, 1));
+    font-weight: 800;
+}
+
+.report-card p {
+    font-size: calc((12px) * var(--font-scale, 1));
+    color: var(--text-muted, #687985);
+    margin: 0 0 calc(12px * var(--content-scale, 1));
+    line-height: 1.35;
+    font-weight: 500;
+}
+
+.btn-select {
+    background: #ffffff;
+    border: 1px solid var(--border-color, #d9e5ec);
+    padding: calc(6px * var(--content-scale, 1)) calc(12px * var(--content-scale, 1));
+    border-radius: 8px;
+    color: var(--text-main, #17212b);
+    font-weight: 700;
+    font-size: calc((12px) * var(--font-scale, 1));
+    cursor: pointer;
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.18s ease;
+    font-family: inherit;
+}
+
+.btn-select::after {
+    content: "→";
+    transition: transform 0.18s ease;
+}
+
+.btn-select:hover {
+    background: var(--accent-soft, #e8eff8);
+    border-color: var(--c);
+    color: var(--c-ink);
+}
+
+.btn-select:hover::after { transform: translateX(3px); }
+
+/* =========================================
+   MAIN CONTENT (2 columns)
+========================================= */
+
+.main-content {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 2.2fr);
+    gap: calc(18px * var(--content-scale, 1));
+    align-items: start;
+}
+
+/* =========================================
+   CARD BASE
+========================================= */
+
+.card {
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: calc(20px * var(--content-scale, 1));
+    border: 1px solid var(--border-color, #d9e5ec);
+    box-shadow: 0 2px 6px rgba(18, 63, 104, 0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+.card h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: calc((15px) * var(--font-scale, 1));
+    margin: 0 0 calc(16px * var(--content-scale, 1));
+    color: var(--primary-blue-hover, #155b91);
+    font-weight: 800;
+}
+
+.card h2::before {
+    content: "";
+    width: 4px;
+    height: 15px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #4a86c8, #155b91);
+}
+
+/* =========================================
+   PARAMETERS PANEL
+========================================= */
+
+.parameters-panel .form-group {
+    margin-bottom: calc(12px * var(--content-scale, 1));
+}
+
+.form-group label {
+    display: block;
+    font-size: calc((11px) * var(--font-scale, 1));
+    color: var(--primary-blue-hover, #155b91);
+    margin-bottom: 6px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    height: 40px;
+    padding: 0 14px;
+    background: #f3f7fc;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    outline: none;
+    font-size: calc((13px) * var(--font-scale, 1));
+    color: var(--text-main, #17212b);
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    background: #ffffff;
+    border-color: #4a86c8;
+    box-shadow: 0 0 0 3px rgba(74, 134, 200, 0.15);
+}
+
+/* =========================================
+   BUTTONS
+========================================= */
+
+.btn-primary {
+    background: linear-gradient(135deg, #1769aa, #155b91);
+    color: #ffffff;
+    border: none;
+    height: 42px;
+    padding: 0 calc(20px * var(--content-scale, 1));
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: calc((13px) * var(--font-scale, 1));
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(23, 105, 170, 0.22);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    transition: all 0.18s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(23, 105, 170, 0.3);
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: var(--text-main, #17212b);
+    border: 1px solid var(--border-color, #d9e5ec);
+    height: 42px;
+    padding: 0 calc(18px * var(--content-scale, 1));
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: calc((13px) * var(--font-scale, 1));
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    transition: all 0.18s ease;
+}
+
+.btn-secondary:hover {
+    background: #e8eff8;
+    border-color: #4a86c8;
+    color: #155b91;
+}
+
+.full-width {
+    width: 100%;
+    margin-top: calc(6px * var(--content-scale, 1));
+}
+
+/* =========================================
+   PREVIEW PANEL
+========================================= */
+
+.preview-panel {
+    padding: calc(18px * var(--content-scale, 1));
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: calc(14px * var(--content-scale, 1));
+    gap: 12px;
+}
+
+.preview-header h2 {
+    margin: 0;
+}
+
+.preview-type {
+    padding: 5px 12px;
+    background: #e8eff8;
+    color: #1769aa;
+    font-size: calc((11px) * var(--font-scale, 1));
+    font-weight: 700;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* =========================================
+   SKELETON — smaller rows
+========================================= */
+
+.skeleton-container {
+    display: flex;
+    flex-direction: column;
+    gap: calc(12px * var(--content-scale, 1));
+    margin-bottom: calc(16px * var(--content-scale, 1));
+    padding: calc(16px * var(--content-scale, 1));
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid var(--line-soft, #e7eef3);
+    min-height: 240px;
+}
+
+.skeleton-row {
+    display: flex;
+    gap: calc(16px * var(--content-scale, 1));
+    padding-bottom: calc(12px * var(--content-scale, 1));
+    border-bottom: 1px solid #f1f5f9;
+    align-items: center;
+}
+
+.skeleton-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.sk-box {
+    height: 12px;
+    border-radius: 6px;
+    flex: 1;
+    background: linear-gradient(90deg, #e8eff8 0%, #f8fbff 50%, #e8eff8 100%);
+    background-size: 200% 100%;
+    animation: shimmerWave 2s infinite ease-in-out;
+}
+
+/* =========================================
+   ACTION FOOTER
+========================================= */
+
+.action-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid var(--line-soft, #e7eef3);
+    padding-top: calc(14px * var(--content-scale, 1));
+    margin-top: auto;
+}
+
+/* =========================================
+   EMPTY STATE (preview)
+========================================= */
+
+.preview-empty {
+    padding: calc(40px * var(--content-scale, 1)) calc(20px * var(--content-scale, 1));
+    text-align: center;
+    color: var(--text-muted, #687985);
+    font-size: calc((13px) * var(--font-scale, 1));
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px dashed var(--border-color, #d9e5ec);
+    margin-bottom: calc(16px * var(--content-scale, 1));
+}
+
+.preview-empty strong { color: var(--primary-blue, #1769aa); }
+
+/* =========================================
+   PREVIEW TABLE
+========================================= */
+
+.preview-table-container {
+    margin-bottom: calc(16px * var(--content-scale, 1));
+    border-radius: 12px;
+    border: 1px solid var(--line-soft, #e7eef3);
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.preview-table th {
+    background: #eef4fb;
+    color: #155b91;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: calc((11px) * var(--font-scale, 1));
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #d3e2f1;
+}
+
+.preview-table td {
+    padding: 10px 14px;
+    font-size: calc((13px) * var(--font-scale, 1));
+    color: var(--text-main, #17212b);
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.preview-table tr:last-child td { border-bottom: none; }
+.preview-table tr:hover td { background: #f3f8fd; }
+
+.preview-table td:first-child {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    color: #1769aa;
+    font-weight: 700;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1024px) {
+    .report-cards { grid-template-columns: repeat(2, 1fr); }
+    .main-content { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .container { padding: 20px 16px 32px; }
+    .report-cards { grid-template-columns: 1fr; }
+    .action-footer { flex-direction: column; }
+    .action-footer button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .report-card, .sk-box { animation: none; }
+}
+/* =========================================
+   ONE CONTAINER — all page content sits in one card
+========================================= */
+.one-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #d9e5ec);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm, 0 2px 6px rgba(18, 63, 104, 0.06));
+  padding: calc(22px * var(--content-scale, 1));
+  margin-bottom: calc(24px * var(--content-scale, 1));
+}
+
+/* Inner panels stop being separate boxes and become sections of the one card */
+.one-card .card,
+.one-card .assignment-card,
+.one-card .notifications-card,
+.one-card .profile-card,
+.one-card .account-card,
+.one-card .preview-panel,
+.one-card .parameters-panel,
+.one-card .report-type-section {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.one-card .assignment-card + .assignment-card,
+.one-card .report-type-section + .main-content,
+.one-card .notifications-card,
+.one-card .profile-card + .account-card {
+  border-top: 1px solid var(--line-soft, #e6eef4);
+}
+
+.one-card .report-type-section + .main-content {
+  margin-top: 18px;
+  padding-top: 18px;
+}
+
+.one-card .profile-card + .account-card {
+  border-top: 0;
+  border-left: 1px solid var(--line-soft, #e6eef4);
+  padding-left: 24px;
+}
+
+@media (max-width: 768px) {
+  .one-card { padding: calc(16px * var(--content-scale, 1)); }
+  .one-card .profile-card + .account-card {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--line-soft, #e6eef4);
+    margin-top: 18px;
+    padding-top: 18px;
+  }
+}
+
+/* =========================================
+   HEADER TO CONTENT — remove the gap under the page header
+========================================= */
+.page-header {
+  margin-bottom: 0 !important;
+}
+
+.page-header + * {
+  margin-top: calc(16px * var(--content-scale, 1)) !important;
+}

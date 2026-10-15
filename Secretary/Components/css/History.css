@@ -1,0 +1,109 @@
+.page {
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: calc(24px * var(--content-scale, 1)) calc(30px * var(--content-scale, 1)) calc(50px * var(--content-scale, 1));
+}
+
+.panel {
+    background: #ffffff;
+    border: 1px solid #d9e5ec;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 2px 6px rgba(18, 63, 104, 0.06);
+}
+
+.panel-head {
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e7eef3;
+}
+
+.panel-head h2 {
+    margin: 0;
+    font-size: calc((16px) * var(--font-scale, 1));
+    font-weight: 800;
+    color: #12355f;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 20px;
+    background: #ffffff;
+    border: 1px solid #d9e5ec;
+    border-left: 4px solid #d9e5ec;
+    border-radius: 12px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.history-card[data-decision="approved"] { border-left-color: #059669; }
+.history-card[data-decision="rejected"] { border-left-color: #dc2626; }
+
+.history-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(18, 63, 104, 0.08);
+}
+
+.history-main { flex: 1; min-width: 0; }
+
+.history-id {
+    font-size: calc((11px) * var(--font-scale, 1));
+    color: #687985;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    margin-bottom: 2px;
+}
+
+.history-title {
+    font-size: calc((15px) * var(--font-scale, 1));
+    font-weight: 800;
+    color: #12355f;
+    margin-bottom: 4px;
+}
+
+.history-meta {
+    font-size: calc((12px) * var(--font-scale, 1));
+    color: #687985;
+}
+
+.status-pill {
+    display: inline-flex;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: calc((11px) * var(--font-scale, 1));
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.status-approved { background: #d1fae5; color: #065f46; }
+.status-rejected { background: #fee2e2; color: #991b1b; }
+
+/* =========================================
+   ONE CONTAINER - header + all page content sit in one card
+========================================= */
+.one-card {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #d9e5ec);
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm, 0 2px 6px rgba(18, 63, 104, 0.06));
+    padding: calc(22px * var(--content-scale, 1));
+    margin-bottom: calc(24px * var(--content-scale, 1));
+}
+
+/* The list keeps its OWN container inside the one card */
+.one-card .panel {
+    background: #f7fafd;
+    border: 1px solid #d3e1ec;
+    border-radius: 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    padding: calc(22px * var(--content-scale, 1));
+}
