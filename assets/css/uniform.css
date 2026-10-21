@@ -1,0 +1,85 @@
+/* =========================================================
+   UNIFORM DESIGN - loaded LAST on the Regular, Maintenance and
+   Secretary pages (see renderHead() in layout.php).
+   The Admin pages are the reference, so these rules make the parts
+   the roles share look exactly like Admin. Nothing in the
+   role stylesheets was removed; these rules just win last.
+   ========================================================= */
+
+/* ---- 1. The one container card (same tokens as Admin's .one-card) ---- */
+html body .one-card {
+    background: var(--card-bg, rgba(255, 255, 255, 0.88));
+    border: 1px solid var(--border-color, rgba(226, 232, 240, 0.85));
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm, 0 2px 8px rgba(18, 43, 80, 0.07));
+    padding: calc(22px * var(--content-scale, 1));
+}
+
+html[data-role="regular"] body .profile-wrap {
+    background: var(--card-bg, rgba(255, 255, 255, 0.88));
+    border: 1px solid var(--border-color, rgba(226, 232, 240, 0.85));
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm, 0 2px 8px rgba(18, 43, 80, 0.07));
+}
+
+@media (max-width: 640px) {
+    html body .one-card {
+        padding: calc(16px * var(--content-scale, 1));
+    }
+}
+
+/* ---- 2. Same page width as Admin for the same kind of page ---- */
+html body[data-page="profile"] .page,
+html body[data-page="profile"] .container {
+    max-width: 1200px;
+}
+
+html body[data-page="dashboard"] .page,
+html body[data-page="dashboard"] .container {
+    max-width: 1200px;
+}
+
+/* ---- 3. Profile page: same avatar + section titles as Admin ---- */
+html body .avatar-lg,
+html body .one-card .avatar-lg,
+html body .profile-wrap .avatar-lg {
+    width: 104px;
+    height: 104px;
+    background: linear-gradient(135deg, var(--accent-light), var(--primary-blue-hover));
+    color: #ffffff;
+    font-size: calc((38px) * var(--font-scale, 1));
+    font-weight: 800;
+    border-radius: 28px;
+    border: 3px solid #ffffff;
+    letter-spacing: -1px;
+    box-shadow: 0 10px 24px rgba(18, 53, 95, 0.24);
+}
+
+html body .profile-card h2 {
+    color: var(--primary-blue-hover);
+    font-size: calc((20px) * var(--font-scale, 1));
+    letter-spacing: -0.3px;
+}
+
+html body .one-card .profile-role,
+html body .profile-wrap .profile-role,
+html body .profile-role {
+    color: var(--text-muted, #687985);
+    font-size: calc((13px) * var(--font-scale, 1));
+    font-weight: 500;
+}
+
+html body .section-label {
+    font-size: calc((14px) * var(--font-scale, 1));
+    letter-spacing: 0.06em;
+    color: var(--primary-blue-hover);
+}
+
+/* ---- 4. Regular dashboard: its container panel gets the same card as Admin's .dash-card ---- */
+html[data-role="regular"] body[data-page="dashboard"] .page > .panel {
+    background: var(--card-bg, rgba(255, 255, 255, 0.88));
+    border: 1px solid var(--border-color, rgba(226, 232, 240, 0.85));
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm, 0 2px 8px rgba(18, 43, 80, 0.07));
+    padding: calc(22px * var(--content-scale, 1));
+}

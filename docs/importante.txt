@@ -1,0 +1,45 @@
+++++++++++tang ina ayusin moto++++++++++++
+
+plan for mobile version
+security optional
+dropdown bos issue (make placeholder are not part of the option)
+apply the loading screen to all 
+fix all notidication design
+remove the popup notification coming from local host
+remove the red dot in the notification in the sidebar it must show only when there has a unnotification
+add a sound for every notification, must play after you recieve a notification
+improve the design of the notification
+remove the maintenance update botton cause its just same as all button
+check all icons in the side bar for nitification dot red
+make the new added notif has a red dot
+settings conteiner
+make the reset button a just a logo
+add a reset logo
+update the loading screen add the text (something to make the user ahhh)
+add a reset button to all searchbar
+filter
+
+*regular
+
+*maintenance
+
+*secretary
+
+*admin
+
+
+
+
+#check workload if working
+#know th especific floor equipment for theme
+#ayusin muna yung folder structure
+#know what is the facility 
+#make sure all export button are working
+
+-secretary
+#check number pending in dashboard are not sync in apprival
+#check Facilities & Equipment Overview (not sync)
+
+
+
+
