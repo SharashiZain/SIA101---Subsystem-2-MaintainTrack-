@@ -1,0 +1,4 @@
+@import url("treasurer_Common.css");
+
+/* Notifications: alert cards built from current data (Common). */
+body[data-page="notification"] .tr-alerts { margin-top: 4px; }

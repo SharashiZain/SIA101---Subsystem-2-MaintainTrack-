@@ -1,0 +1,809 @@
+/* =========================================
+   SIDEBAR — MaintainTrack
+   Shared across Admin, Secretary, Treasurer,
+   Maintenance and Regular roles.
+   Collapsed icon rail that slides open on hover.
+   The profile menu slides UP from the profile
+   button, inside the sidebar.
+========================================= */
+
+:root {
+  --sidebar-width: 76px;
+  --sidebar-expanded-width: 252px;
+  --sidebar-bg: #12355f;
+  --sidebar-accent: #1d4f91;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: #c9dceb;
+  --sidebar-active: #ffffff;
+  --sidebar-active-text: #1d4f91;
+  --sidebar-coral: #ff7a5c;
+
+  /* Motion tokens */
+  --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sidebar-duration: 0.55s;
+
+  /* Profile-menu icons (used as masks so they follow the text colour) */
+  --mt-ico-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+  --mt-ico-settings: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='21' x2='4' y2='14'/%3E%3Cline x1='4' y1='10' x2='4' y2='3'/%3E%3Cline x1='12' y1='21' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12' y2='3'/%3E%3Cline x1='20' y1='21' x2='20' y2='16'/%3E%3Cline x1='20' y1='12' x2='20' y2='3'/%3E%3Cline x1='1' y1='14' x2='7' y2='14'/%3E%3Cline x1='9' y1='8' x2='15' y2='8'/%3E%3Cline x1='17' y1='16' x2='23' y2='16'/%3E%3C/svg%3E");
+  --mt-ico-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E");
+}
+
+body.has-role-sidebar {
+  padding-left: calc(
+    var(--sidebar-width) + calc(16px * var(--content-scale, 1))
+  ) !important;
+  padding-top: 0 !important;
+}
+
+/* =========================================
+   SIDEBAR CONTAINER
+   Content is always laid out at full width.
+   The panel's width grows and each item clips
+   its own text, so the details are revealed as
+   the sidebar slides open.
+========================================= */
+
+.role-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1100;
+  box-sizing: border-box;
+  width: var(--sidebar-width);
+  padding: var(--content-spacing) calc((var(--sidebar-width) - 40px) / 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  overflow: visible;
+  color: var(--sidebar-text);
+  background:
+    radial-gradient(
+      130% 55% at 0% 100%,
+      rgba(74, 134, 200, 0.38),
+      transparent 62%
+    ),
+    radial-gradient(
+      100% 40% at 100% 0%,
+      rgba(255, 255, 255, 0.12),
+      transparent 60%
+    ),
+    linear-gradient(165deg, var(--sidebar-bg), var(--sidebar-accent));
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.1),
+    8px 0 24px rgba(18, 63, 104, 0.16);
+  will-change: width;
+  transition:
+    width var(--sidebar-duration) var(--sidebar-ease) 0.1s,
+    box-shadow var(--sidebar-duration) var(--sidebar-ease) 0.1s;
+}
+
+.role-sidebar * {
+  box-sizing: border-box;
+}
+
+/* Decoration layer 1: dotted pattern fading out downwards */
+.role-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+      rgba(255, 255, 255, 0.16) 1.2px,
+      transparent 1.2px
+    )
+    0 0 / 16px 16px;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 55%);
+  mask-image: linear-gradient(to bottom, #000, transparent 55%);
+}
+
+/* Decoration layer 2: faint ring near the bottom (drawn with a gradient so it never spills out) */
+.role-sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 190px at 0 80%,
+    transparent 186px,
+    rgba(255, 255, 255, 0.08) 187px,
+    transparent 190px
+  );
+}
+
+.role-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Opens when you hover it (pure CSS, works in every browser).
+   RoleNavigation.js also adds .is-expanded for keyboard focus and while the profile menu is open. */
+.role-sidebar:hover,
+.role-sidebar.is-expanded {
+  width: var(--sidebar-expanded-width);
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.14),
+    12px 0 32px rgba(18, 63, 104, 0.28);
+  transition-delay: 0s;
+}
+
+/* Labels: hidden in the rail, then fade + slide in one after another once the panel is opening.
+   When it retracts they fade out first, together. */
+.role-sidebar .menu-item > span:not(.menu-icon),
+.sidebar-brand > span:not(.sidebar-brand-mark),
+.role-sidebar .profile-summary {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition:
+    opacity 0.14s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-user-chevron {
+  opacity: 0;
+  transition:
+    opacity 0.14s ease,
+    transform 0.25s var(--sidebar-ease);
+}
+
+.role-sidebar:hover .menu-item > span:not(.menu-icon),
+.role-sidebar.is-expanded .menu-item > span:not(.menu-icon),
+.role-sidebar:hover .sidebar-brand > span:not(.sidebar-brand-mark),
+.role-sidebar.is-expanded .sidebar-brand > span:not(.sidebar-brand-mark),
+.role-sidebar:hover .profile-summary,
+.role-sidebar.is-expanded .profile-summary {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.32s ease 0.12s,
+    transform 0.5s var(--sidebar-ease) 0.12s;
+}
+
+.role-sidebar:hover .sidebar-user-chevron,
+.role-sidebar.is-expanded .sidebar-user-chevron {
+  opacity: 1;
+  transition:
+    opacity 0.3s ease 0.3s,
+    transform 0.25s var(--sidebar-ease);
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(1)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(1)
+  > span:not(.menu-icon) {
+  transition-delay: 0.165s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(2)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(2)
+  > span:not(.menu-icon) {
+  transition-delay: 0.21s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(3)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(3)
+  > span:not(.menu-icon) {
+  transition-delay: 0.255s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(4)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(4)
+  > span:not(.menu-icon) {
+  transition-delay: 0.3s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(5)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(5)
+  > span:not(.menu-icon) {
+  transition-delay: 0.345s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(6)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(6)
+  > span:not(.menu-icon) {
+  transition-delay: 0.39s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(7)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(7)
+  > span:not(.menu-icon) {
+  transition-delay: 0.435s;
+}
+
+.role-sidebar:hover
+  .sidebar-menu
+  .menu-item:nth-child(8)
+  > span:not(.menu-icon),
+.role-sidebar.is-expanded
+  .sidebar-menu
+  .menu-item:nth-child(8)
+  > span:not(.menu-icon) {
+  transition-delay: 0.48s;
+}
+
+/* the brand name and the profile block come in last */
+.role-sidebar:hover .profile-summary,
+.role-sidebar.is-expanded .profile-summary {
+  transition-delay: 0.3s;
+}
+
+/* =========================================
+   BRAND — logo circle + name
+========================================= */
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--content-scale, 1));
+  min-height: 56px;
+  padding: 0 0 16px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: calc((17px) * var(--font-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-brand-mark {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.25),
+    0 0 0 3px rgba(255, 255, 255, 0.18);
+  padding: 0;
+  transition: transform 0.3s var(--sidebar-ease);
+}
+
+.sidebar-brand:hover .sidebar-brand-mark {
+  transform: rotate(-8deg) scale(1.06);
+}
+
+.sidebar-brand-mark svg,
+.sidebar-brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.15);
+  display: block;
+}
+
+.sidebar-brand-mark svg {
+  padding: calc(7px * var(--content-scale, 1));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* =========================================
+   MENU
+========================================= */
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--content-scale, 1));
+}
+
+/* small section label, revealed when the sidebar opens */
+.sidebar-menu::before {
+  content: "MAIN MENU";
+  display: block;
+  height: 14px;
+  margin: 0 0 2px 6px;
+  overflow: hidden;
+  color: rgba(201, 220, 235, 0.65);
+  font-size: calc((10px) * var(--font-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.role-sidebar:hover .sidebar-menu::before,
+.role-sidebar.is-expanded .sidebar-menu::before {
+  opacity: 1;
+  transition: opacity 0.3s ease 0.14s;
+}
+
+.role-sidebar .menu-item {
+  position: relative;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--content-scale, 1));
+  padding: 0 5px;
+  overflow: hidden;
+  border-radius: 13px;
+  color: var(--sidebar-muted);
+  font-size: calc((13px) * var(--font-scale, 1));
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.role-sidebar .menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sidebar-text);
+  transform: translateX(2px);
+}
+
+.role-sidebar .menu-item.active {
+  background: linear-gradient(135deg, #ffffff, #e4edf8);
+  color: var(--sidebar-active-text);
+  box-shadow: 0 8px 18px rgba(4, 22, 45, 0.3);
+  transform: none;
+}
+
+/* accent bar on the active item */
+.role-sidebar .menu-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 20px;
+  transform: translateY(-50%);
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, #4a86c8, #1d4f91);
+}
+
+/* icon sits in a soft rounded tile */
+.role-sidebar .menu-icon {
+  width: 30px;
+  height: 30px;
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.18s ease;
+}
+
+.role-sidebar .menu-item:hover .menu-icon {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.role-sidebar .menu-item.active .menu-icon {
+  background: rgba(29, 79, 145, 0.12);
+}
+
+.role-sidebar .menu-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.role-sidebar .menu-badge {
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--sidebar-coral);
+  color: #ffffff;
+  font-size: calc((10px) * var(--font-scale, 1));
+  font-weight: 800;
+}
+
+.role-sidebar .notification-dot[hidden] {
+  display: none !important;
+}
+
+.role-sidebar .notification-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--sidebar-bg);
+  border-radius: 50%;
+  background: var(--sidebar-coral);
+  animation: mtSidebarDotPulse 2s ease-out infinite;
+}
+
+.role-sidebar .menu-item.active .notification-dot {
+  border-color: #ffffff;
+}
+
+@keyframes mtSidebarDotPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 92, 0.65);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(255, 122, 92, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 92, 0);
+  }
+}
+
+/* =========================================
+   ACCOUNT (bottom)
+========================================= */
+
+.sidebar-account {
+  position: relative;
+  z-index: 1300;
+  margin-top: auto;
+  padding-top: var(--content-spacing);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* profile button = rounded pill (a ring around the avatar when collapsed) */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--content-scale, 1));
+  width: 100%;
+  height: 40px;
+  min-width: 0;
+  padding: 2px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.sidebar-user:hover,
+.sidebar-user[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.sidebar-user:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+}
+
+.sidebar-user-chevron {
+  margin-left: auto;
+  margin-right: 12px;
+  flex-shrink: 0;
+  color: var(--sidebar-muted);
+  font-size: 11px;
+  transition: transform 0.25s var(--sidebar-ease);
+}
+
+/* arrow points up = the menu slides up */
+.sidebar-user-chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-user[aria-expanded="true"] .sidebar-user-chevron {
+  transform: rotate(0deg);
+}
+
+/* ---- profile menu: slides UP from the profile button, inside the sidebar ---- */
+.sidebar-user-menu {
+  position: absolute;
+  z-index: 1301;
+  left: 0;
+  bottom: calc(100% + 12px);
+  width: calc(var(--sidebar-expanded-width) - var(--sidebar-width) + 40px);
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #17427a, #0f2e55);
+  box-shadow:
+    0 -14px 34px rgba(3, 18, 40, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  /* hidden state: slightly lower and transparent */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(16px) scale(0.96);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.2s ease,
+    transform 0.36s var(--sidebar-ease),
+    visibility 0s linear 0.36s;
+}
+
+.sidebar-user-menu.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 0.2s ease,
+    transform 0.36s var(--sidebar-ease),
+    visibility 0s;
+}
+
+/* little pointer toward the profile button */
+.sidebar-user-menu::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  background: #0f2e55;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0 0 4px 0;
+  transform: rotate(45deg);
+}
+
+.sidebar-user-menu a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: calc(10px * var(--content-scale, 1))
+    calc(12px * var(--content-scale, 1));
+  border-radius: 10px;
+  color: var(--sidebar-muted);
+  font-size: calc((12px) * var(--font-scale, 1));
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* icons (picked by what the link points to) */
+.sidebar-user-menu a::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background: currentColor;
+  -webkit-mask: var(--mt-ico-user) center / contain no-repeat;
+  mask: var(--mt-ico-user) center / contain no-repeat;
+}
+
+.sidebar-user-menu a[href*="settings.php"]::before {
+  -webkit-mask-image: var(--mt-ico-settings);
+  mask-image: var(--mt-ico-settings);
+}
+
+.sidebar-user-menu a[href*="Logout.php"]::before,
+.sidebar-user-menu .logout-link::before {
+  -webkit-mask-image: var(--mt-ico-logout);
+  mask-image: var(--mt-ico-logout);
+}
+
+.sidebar-user-menu a:hover,
+.sidebar-user-menu a:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text);
+  transform: translateX(2px);
+}
+
+.sidebar-user-menu .logout-link {
+  margin-top: 7px;
+  color: #ffc4bc;
+}
+
+/* thin divider above Logout */
+.sidebar-user-menu .logout-link::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: -4px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-user-menu .logout-link:hover,
+.sidebar-user-menu .logout-link:focus-visible {
+  background: rgba(255, 99, 80, 0.2);
+  color: #ffe3df;
+}
+
+.role-sidebar .profile-avatar {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff, #d6e6f7);
+  color: #1d4f91;
+  font-size: calc((12px) * var(--font-scale, 1));
+  font-weight: 800;
+}
+
+/* green "online" dot */
+.role-sidebar .profile-avatar::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--sidebar-bg);
+  border-radius: 50%;
+  background: #3ddc97;
+}
+
+.role-sidebar .profile-summary {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--content-scale, 1));
+  min-width: 0;
+  overflow: hidden;
+}
+
+.role-sidebar .profile-summary strong,
+.role-sidebar .profile-summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-sidebar .profile-summary strong {
+  font-size: calc((12px) * var(--font-scale, 1));
+}
+
+.role-sidebar .profile-summary small {
+  color: var(--sidebar-muted);
+  font-size: calc((10px) * var(--font-scale, 1));
+  letter-spacing: 0.04em;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 700px) {
+  body.has-role-sidebar {
+    padding-left: calc(84px * var(--content-scale, 1)) !important;
+  }
+
+  .role-sidebar {
+    padding-top: calc(16px * var(--content-scale, 1));
+    padding-bottom: calc(16px * var(--content-scale, 1));
+    gap: calc(20px * var(--content-scale, 1));
+  }
+}
+
+@media (max-height: 620px) {
+  .role-sidebar {
+    padding-top: calc(10px * var(--content-scale, 1));
+    padding-bottom: calc(10px * var(--content-scale, 1));
+    gap: calc(10px * var(--content-scale, 1));
+  }
+
+  .sidebar-brand {
+    min-height: 48px;
+    padding-bottom: 10px;
+  }
+
+  .sidebar-menu {
+    gap: calc(2px * var(--content-scale, 1));
+  }
+
+  .sidebar-menu::before {
+    display: none;
+  }
+
+  .role-sidebar .menu-item {
+    min-height: 38px;
+  }
+
+  .sidebar-account {
+    padding-top: calc(10px * var(--content-scale, 1));
+  }
+}
+
+/* "Reduce motion" (Windows: Settings > Accessibility > Visual effects > Animation effects = Off).
+   Many laptops have this on by default. Instead of switching the sidebar animation OFF
+   (which looks like it just "blinks"), keep a gentle width + fade and remove only the
+   sliding, spinning and pulsing. */
+@media (prefers-reduced-motion: reduce) {
+  .role-sidebar {
+    transition:
+      width 0.4s ease 0.1s,
+      box-shadow 0.4s ease 0.1s;
+  }
+
+  .role-sidebar .menu-item > span:not(.menu-icon),
+  .sidebar-brand > span:not(.sidebar-brand-mark),
+  .role-sidebar .profile-summary {
+    transform: none;
+  }
+
+  .sidebar-brand:hover .sidebar-brand-mark {
+    transform: none;
+  }
+
+  .sidebar-user-menu,
+  .sidebar-user-menu.open {
+    transform: none;
+  }
+
+  .sidebar-user-menu {
+    transition:
+      opacity 0.2s ease,
+      visibility 0s linear 0.2s;
+  }
+
+  .sidebar-user-menu.open {
+    transition:
+      opacity 0.2s ease,
+      visibility 0s;
+  }
+
+  .role-sidebar .notification-dot {
+    animation: none;
+  }
+}

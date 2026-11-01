@@ -1,0 +1,511 @@
+/* =========================================
+   MAINTAINTRACK TOP NAVBAR (shared by every role)
+========================================= */
+
+:root {
+  /* Profile-menu icons (used as masks so they follow the text colour) */
+  --mt-ico-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+  --mt-ico-settings: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='21' x2='4' y2='14'/%3E%3Cline x1='4' y1='10' x2='4' y2='3'/%3E%3Cline x1='12' y1='21' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12' y2='3'/%3E%3Cline x1='20' y1='21' x2='20' y2='16'/%3E%3Cline x1='20' y1='12' x2='20' y2='3'/%3E%3Cline x1='1' y1='14' x2='7' y2='14'/%3E%3Cline x1='9' y1='8' x2='15' y2='8'/%3E%3Cline x1='17' y1='16' x2='23' y2='16'/%3E%3C/svg%3E");
+  --mt-ico-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E");
+}
+
+.topnav {
+  --font-scale: 1;
+  --content-scale: 1;
+  width: 100%;
+  height: 68px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  background:
+    radial-gradient(
+      60% 150% at 50% -50%,
+      rgba(255, 255, 255, 0.18),
+      transparent 62%
+    ),
+    linear-gradient(120deg, #0c2a4d 0%, #1d4f91 55%, #2d6bb5 100%);
+  color: #ffffff;
+  box-shadow:
+    0 14px 30px rgba(12, 42, 77, 0.3),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* dotted pattern fading in from the right */
+.topnav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      rgba(255, 255, 255, 0.18) 1.5px,
+      transparent 1.5px
+    )
+    0 0 / 16px 16px;
+  -webkit-mask-image: linear-gradient(to left, #000, transparent 65%);
+  mask-image: linear-gradient(to left, #000, transparent 65%);
+  pointer-events: none;
+}
+
+/* glowing hairline along the bottom edge */
+.topnav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55) 30%,
+    rgba(255, 122, 92, 0.65) 50%,
+    rgba(255, 255, 255, 0.55) 70%,
+    transparent
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.topnav-inner {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+/* =========================================
+   BRAND
+========================================= */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.22),
+    0 0 0 4px rgba(255, 255, 255, 0.18);
+  transition: transform 0.25s ease;
+}
+
+.brand:hover .brand-logo {
+  transform: rotate(-8deg) scale(1.06);
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.brand-name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* =========================================
+   MENU — glass pill that holds the links
+========================================= */
+
+.topnav-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 5px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 6px 16px rgba(5, 24, 48, 0.18);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.menu-item {
+  position: relative;
+  height: 40px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #c9dceb;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.menu-item.active {
+  background: linear-gradient(180deg, #ffffff, #e4edf8);
+  color: #12355f;
+  box-shadow:
+    0 8px 18px rgba(3, 24, 42, 0.28),
+    inset 0 -2px 0 rgba(29, 79, 145, 0.18);
+  transform: none;
+}
+
+.menu-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.menu-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notification-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff7a5c;
+  border: 1.5px solid #155b91;
+  animation: mtNavDotPulse 2s ease-out infinite;
+}
+
+.menu-item.active .notification-dot {
+  border-color: #ffffff;
+}
+
+/* Hidden until NotificationSound.js finds something to show */
+.notification-dot[hidden] {
+  display: none !important;
+}
+
+@keyframes mtNavDotPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 92, 0.65);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(255, 122, 92, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 92, 0);
+  }
+}
+
+/* =========================================
+   PROFILE
+========================================= */
+
+.topnav-profile-wrapper {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.topnav-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.topnav-profile:hover,
+.topnav-profile[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.topnav-profile:active {
+  transform: scale(0.98);
+}
+
+.profile-avatar {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff, #d6e6f7);
+  color: #12355f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+/* green "online" dot */
+.profile-avatar::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3ddc97;
+  border: 2px solid #1b5fa3;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+
+.profile-info strong {
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.profile-info span {
+  font-size: 10px;
+  color: #c4ddec;
+  letter-spacing: 0.04em;
+}
+
+.profile-chevron {
+  font-size: 11px;
+  color: #c4ddec;
+  transition: transform 0.25s ease;
+}
+
+.topnav-profile[aria-expanded="true"] .profile-chevron {
+  transform: rotate(180deg);
+}
+
+/* ---- dropdown: slides down from the profile button ---- */
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  min-width: 212px;
+  padding: 8px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 22px 44px rgba(8, 30, 58, 0.35),
+    0 0 0 1px rgba(18, 53, 95, 0.08);
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-10px) scale(0.97);
+  transform-origin: top right;
+  transition:
+    opacity 0.18s ease,
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.3s;
+}
+
+.profile-menu.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 0.18s ease,
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s;
+}
+
+/* little pointer toward the profile button */
+.profile-menu::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 30px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 3px 0 0 0;
+  transform: rotate(45deg);
+}
+
+.profile-menu a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1c2530;
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* icons (picked by what the link points to) */
+.profile-menu a::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background: #4a86c8;
+  -webkit-mask: var(--mt-ico-user) center / contain no-repeat;
+  mask: var(--mt-ico-user) center / contain no-repeat;
+  transition: background 0.15s ease;
+}
+
+.profile-menu a[href*="settings.php"]::before {
+  -webkit-mask-image: var(--mt-ico-settings);
+  mask-image: var(--mt-ico-settings);
+}
+
+.profile-menu a[href*="Logout.php"]::before,
+.profile-menu .profile-logout::before,
+.profile-menu .logout-link::before {
+  -webkit-mask-image: var(--mt-ico-logout);
+  mask-image: var(--mt-ico-logout);
+}
+
+.profile-menu a:hover {
+  background: #e8eff8;
+  color: #12355f;
+  transform: translateX(2px);
+}
+
+.profile-menu .profile-logout,
+.profile-menu .logout-link {
+  margin-top: 7px;
+  color: #b3372b;
+}
+
+.profile-menu .profile-logout::before,
+.profile-menu .logout-link::before {
+  background: #c0392b;
+}
+
+/* thin divider above Logout */
+.profile-menu .profile-logout::after,
+.profile-menu .logout-link::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: -4px;
+  height: 1px;
+  background: #e3eaf3;
+}
+
+.profile-menu .profile-logout:hover,
+.profile-menu .logout-link:hover {
+  background: #fdeceb;
+  color: #8f2217;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 1180px) {
+  .topnav-menu .menu-item:not(.active) > span:last-child {
+    display: none;
+  }
+  .profile-info {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .topnav {
+    height: auto;
+    min-height: 68px;
+  }
+  .topnav-inner {
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .topnav-menu {
+    order: 3;
+    width: 100%;
+    margin: 0;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+  .brand-name {
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand:hover .brand-logo {
+    transform: none;
+  }
+  .profile-menu,
+  .profile-chevron {
+    transition: none !important;
+  }
+  .notification-dot {
+    animation: none;
+  }
+}

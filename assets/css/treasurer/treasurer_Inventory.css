@@ -1,0 +1,5 @@
+@import url("treasurer_Common.css");
+
+/* Inventory: item rows carry their own compact inputs. */
+body[data-page="inventory"] .tr-table td .tr-small { max-width: 150px; }
+body[data-page="inventory"] .tr-add { max-width: none; }

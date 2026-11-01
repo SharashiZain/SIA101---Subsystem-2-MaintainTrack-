@@ -1,0 +1,4 @@
+@import url("treasurer_Common.css");
+
+/* History: filter bar with date range, then two log tables. */
+body[data-page="history"] .tr-toolbar { margin-bottom: 24px; }

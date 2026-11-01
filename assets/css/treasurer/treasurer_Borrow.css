@@ -1,0 +1,5 @@
+@import url("treasurer_Common.css");
+
+/* Borrow/Return: the release form switches fields by borrower type (JS). */
+body[data-page="borrow"] #releaseForm .tr-field[hidden] { display: none; }
+body[data-page="borrow"] #releaseForm input[type="file"] { padding: 7px; font-size: 13px; }

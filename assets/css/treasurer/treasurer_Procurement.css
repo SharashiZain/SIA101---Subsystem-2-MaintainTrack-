@@ -1,0 +1,4 @@
+@import url("treasurer_Common.css");
+
+/* Procurement: receipts and price figures reuse the shared KPI and table styles. */
+body[data-page="procurement"] .tr-kpis { margin-bottom: 20px; }

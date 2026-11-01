@@ -1,0 +1,366 @@
+/* ==========================================================
+   Scrolling + header fix (scoped to this page only)
+   body[data-page="analytics"] is set by renderHead('Analytics', 'Analytics.css').
+   ========================================================== */
+
+html:has(> body[data-page="analytics"]),
+body[data-page="analytics"] {
+  height: auto !important;
+  min-height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
+body[data-page="analytics"] .dashboard,
+body[data-page="analytics"] .dash-card {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body[data-page="analytics"] .dashboard {
+  position: static !important;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24px 24px 48px;
+}
+
+body[data-page="analytics"] .page-header {
+  position: relative !important;
+  top: auto !important;
+  margin-bottom: 32px;
+}
+
+/* ==========================================================
+   MaintainTrack · Administrator · Analytics
+   Save as: assets/css/admin/admin_Analytics.css
+   Loaded after Dashboard.css, so it only styles the analytics blocks.
+   Status colors match the admin dashboard (dash-code-*).
+   ========================================================== */
+
+:root {
+  --an-ink: #1f2d3a;
+  --an-muted: #687985;
+  --an-line: #eef1f4;
+  --an-track: #eef1f4;
+  --an-card: #ffffff;
+  --an-border: #e3e8ee;
+  --an-radius: 14px;
+
+  --an-green: #237a42;
+  --an-orange: #a86408;
+  --an-red: #b53b40;
+
+  /* Status palette (same as the admin dashboard) */
+  --st-pending: #b56a00;
+  --st-assigned: #1f6fb8;
+  --st-in-progress: #6d43b8;
+  --st-completed: #17794f;
+  --st-on-hold: #b53b40;
+}
+
+/* ---------- Layout ---------- */
+
+.an-alert {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fde8e9;
+  color: var(--an-red);
+  font-size: 14px;
+}
+
+.an-filter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.an-filter label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--an-muted);
+}
+
+.an-filter select {
+  padding: 8px 12px;
+  border: 1px solid var(--an-border);
+  border-radius: 8px;
+  background: var(--an-card);
+  color: var(--an-ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.an-filter select:focus {
+  outline: 2px solid #cfe3d6;
+  outline-offset: 1px;
+}
+
+.an-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.an-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 760px) {
+  .an-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Summary strip (fits as many cards as the width allows) ---------- */
+
+.an-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.an-metric {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--an-border);
+  border-radius: var(--an-radius);
+  background: var(--an-card);
+}
+
+.an-metric-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--an-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.an-metric-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--an-ink);
+}
+
+.an-metric-value.warn {
+  color: var(--an-orange);
+}
+
+/* ---------- Panels ---------- */
+
+.an-panel {
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--an-border);
+  border-radius: var(--an-radius);
+  background: var(--an-card);
+}
+
+.an-panel-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--an-ink);
+}
+
+.an-note {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--an-muted);
+}
+
+.an-empty {
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--an-muted);
+}
+
+/* ---------- Ranked rows (equipment, problems, category, priority, facility, personnel) ---------- */
+
+.an-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--an-line);
+}
+
+.an-row:last-child {
+  border-bottom: none;
+}
+
+.an-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--an-ink);
+}
+
+.an-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--an-muted);
+}
+
+.an-count {
+  align-self: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--an-ink);
+}
+
+.an-track {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--an-track);
+}
+
+.an-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--an-green);
+}
+
+.an-fill.warn {
+  background: var(--an-orange);
+}
+
+.an-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fdf0dc;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--an-orange);
+  vertical-align: middle;
+}
+
+/* ---------- Status bars (same colors as admin dashboard) ---------- */
+
+.an-status-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+}
+
+.an-status-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--an-ink);
+}
+
+.an-status-row .an-track {
+  grid-column: auto;
+  height: 10px;
+}
+
+.an-status-num {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--an-ink);
+}
+
+.an-fill.s-pending {
+  background: var(--st-pending);
+}
+.an-fill.s-assigned {
+  background: var(--st-assigned);
+}
+.an-fill.s-in-progress {
+  background: var(--st-in-progress);
+}
+.an-fill.s-completed {
+  background: var(--st-completed);
+}
+.an-fill.s-on-hold {
+  background: var(--st-on-hold);
+}
+
+/* ---------- Month columns ----------
+   Each column is: value label (fixed) + plot area (fills the rest) + month label (fixed).
+   Bars grow inside the plot area, so they can never push the labels out of the chart. */
+
+.an-columns {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  height: 220px;
+  padding: 8px 4px 0;
+  border-bottom: 1px solid var(--an-line);
+}
+
+.an-col {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.an-col-value {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--an-ink);
+}
+
+.an-col-plot {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+.an-col-bar {
+  width: 100%;
+  max-width: 44px;
+  min-height: 3px;
+  border-radius: 6px 6px 0 0;
+  background: var(--an-green);
+}
+
+.an-col-label {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--an-muted);
+}
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 480px) {
+  .an-panel {
+    padding: 14px;
+  }
+
+  .an-status-row {
+    grid-template-columns: 80px minmax(0, 1fr) 30px;
+  }
+
+  .an-columns {
+    height: 180px;
+  }
+}
