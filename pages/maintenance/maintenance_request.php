@@ -2,7 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
+require_once __DIR__ . '/../../includes/bodega.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 function mpApi(string $method, string $endpoint, ?array $payload = null, array $extraHeaders = []): array {
@@ -63,9 +64,15 @@ function mpResolveCurrentUser(): ?array {
     return $u;
 }
 
-$pageError=''; $pageSuccess=''; $request=null; $updates=[]; $showUpdateModal=false;
+$pageError=''; $pageSuccess=''; $pageWarning=''; $request=null; $updates=[]; $showUpdateModal=false;
+$showItemRequestModal=false; $itemRequestError=''; $itemRequestValues=['item_id'=>'','qty'=>'1','remarks'=>''];
 $currentUser = mpResolveCurrentUser();
 $currentUserId = $currentUser ? (string)$currentUser['user_id'] : '';
+$bodegaItems=[];
+if (empty($_SESSION['maintenance_item_request_csrf'])) {
+    $_SESSION['maintenance_item_request_csrf']=bin2hex(random_bytes(32));
+}
+$itemRequestCsrf=(string)$_SESSION['maintenance_item_request_csrf'];
 // The id may be the request UUID or the human-readable display ID (e.g. MT-00134).
 $requestId=trim((string)($_GET['id']??$_POST['request_id']??''));
 
@@ -80,12 +87,80 @@ if ($pageError==='') {
         $pageError='Unable to load request. '.($rr['error']??'');
     } elseif (empty($rr['data'][0])) {
         $pageError='No request with ID "'.$requestId.'" was found. Please open this page from My Tasks.';
-    } elseif ((string)($rr['data'][0]['assigned_to'] ?? '') !== $currentUserId) {
-        $pageError='This request ('.($rr['data'][0]['display_id'] ?? $requestId).') is not assigned to your account.';
     } else {
-        $request=$rr['data'][0];
-        // From here on, every query uses the real request UUID.
-        $requestId=(string)$request['request_id'];
+        $candidate=$rr['data'][0];
+        $isAssigned=(string)($candidate['assigned_to']??'')===$currentUserId;
+        if (!$isAssigned && mpIsUuid((string)($candidate['request_id']??''))) {
+            $assignment=mpApi(
+                'GET',
+                'assignments?request_id=eq.'.rawurlencode((string)$candidate['request_id'])
+                .'&assigned_to=eq.'.rawurlencode($currentUserId).'&select=request_id&limit=1'
+            );
+            if (!$assignment['success']) {
+                $pageError='Unable to verify your assignment. '.($assignment['error']??'');
+            } else {
+                $isAssigned=!empty($assignment['data'][0]);
+            }
+        }
+        if (!$isAssigned && $pageError==='') {
+            $pageError='This request ('.($candidate['display_id']??$requestId).') is not assigned to your account.';
+        } elseif ($isAssigned) {
+            $request=$candidate;
+            // From here on, every query uses the real request UUID.
+            $requestId=(string)$request['request_id'];
+        }
+    }
+}
+
+/* ---- Request a bodega item for this assigned maintenance request ---- */
+if ($_SERVER['REQUEST_METHOD']==='POST' && $pageError==='' && ($_POST['form_action']??'')==='request_item') {
+    $itemRequestValues=[
+        'item_id'=>trim((string)($_POST['item_id']??'')),
+        'qty'=>(string)($_POST['qty']??'1'),
+        'remarks'=>trim((string)($_POST['remarks']??'')),
+    ];
+    if (!hash_equals($itemRequestCsrf,(string)($_POST['csrf_token']??''))) {
+        $itemRequestError='Your session token expired. Refresh the page and try again.';
+    } else {
+        $bodegaItems=bodegaItems();
+        $itemMap=bodegaItemMap($bodegaItems);
+        $item=$itemMap[$itemRequestValues['item_id']]??null;
+        $qty=filter_var($itemRequestValues['qty'],FILTER_VALIDATE_INT);
+        $remarks=$itemRequestValues['remarks'];
+
+        if (!$item) {
+            $itemRequestError='Select an item from the Storage Unit.';
+        } elseif (!in_array((string)($item['item_type']??''),['consumable','returnable'],true)) {
+            $itemRequestError='The selected item has an unsupported item type.';
+        } elseif ($qty===false || $qty<1) {
+            $itemRequestError='Enter a quantity of at least 1.';
+        } elseif ($qty>bodegaAvailableQty($item)) {
+            $itemRequestError='There is not enough stock available for that quantity.';
+        } elseif (mb_strlen($remarks)>180) {
+            $itemRequestError='Remarks must be 180 characters or fewer.';
+        } else {
+            $txnType=(string)$item['item_type']==='consumable'?'use':'borrow';
+            $note='Request ID: '.$requestId.'; Remarks: '.($remarks!==''?$remarks:'None');
+            $txnError=bodegaInsert('inventory_transactions',[
+                'item_id'=>(string)$item['item_id'],
+                'txn_type'=>$txnType,
+                'qty'=>$qty,
+                'status'=>'pending',
+                'borrower_type'=>'staff',
+                'borrower_user_id'=>$currentUserId,
+                'notes'=>$note,
+            ]);
+
+            if ($txnError!==null) {
+                $itemRequestError='Could not submit the item request. '.$txnError;
+            } else {
+                $_SESSION['maintenance_request_flash']='Item request submitted for treasurer approval.';
+                header('Location: maintenance_request.php?id='.rawurlencode($requestId)); exit;
+            }
+        }
+    }
+    if ($itemRequestError!=='') {
+        $showItemRequestModal=true;
     }
 }
 
@@ -98,20 +173,17 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && $pageError==='' && ($_POST['form_acti
     } elseif (in_array($currentStatusLower,['completed','rejected'],true)) {
         $pageError='This request can no longer be rejected.';
     } else {
-        $savedReject=mpApi('PATCH','maintenance_requests?request_id=eq.'.rawurlencode($requestId).'&assigned_to=eq.'.rawurlencode($currentUserId),['status'=>'Rejected'],['Prefer: return=representation']);
-        if (!$savedReject['success'] || empty($savedReject['data'])) {
-            $pageError='Unable to reject request. '.($savedReject['error']??'No matching assigned request was updated.');
+        $savedReject=mpApi('POST','rpc/reject_maintenance_request_with_notification',[
+            'p_request_id'=>$requestId,
+            'p_rejected_by'=>$currentUserId,
+            'p_reason'=>$rejectReason,
+        ]);
+        if (!$savedReject['success'] || !is_array($savedReject['data'])
+            || ($savedReject['data']['rejected']??false)!==true) {
+            $pageError='Unable to reject request. '.($savedReject['error']??'Supabase did not confirm the rejection.');
         } else {
-            $insertReject=mpApi('POST','maintenance_rejections',['request_id'=>$requestId,'rejected_by'=>$currentUserId,'reason'=>$rejectReason],['Prefer: return=minimal']);
-            if (!$insertReject['success']) {
-                $pageError='The request was rejected, but saving the reason failed: '.($insertReject['error']??'');
-            } else {
-                mpApi('POST','request_timeline',['request_id'=>$requestId,'status'=>'Rejected','actor_user_id'=>$currentUserId,'note'=>mb_substr('Rejected: '.$rejectReason,0,255)],['Prefer: return=minimal']);
-                $mpName=(string)($_SESSION['full_name']??$_SESSION['username']??'Maintenance Personnel');
-                mpApi('POST','activity_log',['action_text'=>mb_substr('Request '.($request['display_id']??$requestId).' rejected by '.$mpName.': '.$rejectReason,0,255),'related_request_id'=>$requestId,'actor_user_id'=>$currentUserId],['Prefer: return=minimal']);
-                $_SESSION['maintenance_request_flash']='Maintenance request rejected.';
-                header('Location: maintenance_request.php?id='.rawurlencode($requestId)); exit;
-            }
+            $_SESSION['maintenance_request_flash']='Maintenance request rejected.';
+            header('Location: maintenance_request.php?id='.rawurlencode($requestId)); exit;
         }
     }
 }
@@ -165,8 +237,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && $pageError==='' && ($_POST['form_acti
     if ($pageError!=='') $showUpdateModal=true;
 }
 if (!empty($_SESSION['maintenance_request_flash'])) { $pageSuccess=(string)$_SESSION['maintenance_request_flash']; unset($_SESSION['maintenance_request_flash']); }
+if (!empty($_SESSION['maintenance_request_warning'])) { $pageWarning=(string)$_SESSION['maintenance_request_warning']; unset($_SESSION['maintenance_request_warning']); }
 
 if ($request && $pageError==='') {
+    if (!$bodegaItems) $bodegaItems=bodegaItems();
     $lookups=[];
     foreach ([
         'facility'=>['facilities','facility_id',$request['facility_id']??'','name'],
@@ -246,6 +320,7 @@ renderHead('Request Details', 'Request.css', 'maintenance');
 <div class="page mp-request-page">
   <?php if ($pageError!==''): ?><div class="mp-alert error" role="alert"><?=mpText($pageError)?></div><?php endif; ?>
   <?php if ($pageSuccess!==''): ?><div class="mp-alert success" role="status"><?=mpText($pageSuccess)?></div><?php endif; ?>
+  <?php if ($pageWarning!==''): ?><div class="mp-alert warning" role="alert"><?=mpText($pageWarning)?></div><?php endif; ?>
 
   <?php if ($request && $pageError===''): ?>
     <a class="mp-back-top" href="maintenance_task.php"><span aria-hidden="true">←</span> Back to My Tasks</a>
@@ -270,6 +345,7 @@ renderHead('Request Details', 'Request.css', 'maintenance');
         </div>
         <div class="mp-request-id-actions">
           <button class="mp-btn" type="button" id="openUpdateModal" style="<?= $isRejected ? 'display:none' : '' ?>">Update Maintenance Request</button>
+          <button class="mp-btn mp-btn-request-item" type="button" id="openItemRequestModal">Request an Item</button>
           <button class="mp-btn-reject" type="button" id="openRejectModal" style="<?= $canReject ? '' : 'display:none' ?>">Reject Request</button>
           <span class="mp-status"><?=mpText($request['status'] ?? 'Assigned')?></span>
         </div>
@@ -388,6 +464,33 @@ renderHead('Request Details', 'Request.css', 'maintenance');
       </div>
     </div>
 
+    <div class="mp-overlay" id="itemRequestModal" style="display:<?= $showItemRequestModal ? 'flex' : 'none' ?>" role="dialog" aria-modal="true" aria-labelledby="itemRequestModalTitle">
+      <div class="mp-modal">
+        <div class="mp-modal-head"><div><h2 id="itemRequestModalTitle">Request an Item</h2><p><?=mpText($request['display_id']??$request['request_id'])?></p></div><button type="button" class="mp-x" id="closeItemRequestModal" aria-label="Close">&times;</button></div>
+        <?php if ($itemRequestError!==''): ?><div class="mp-alert error" role="alert"><?=mpText($itemRequestError)?></div><?php endif; ?>
+        <form method="POST" id="itemRequestForm">
+          <input type="hidden" name="request_id" value="<?=mpText($requestId)?>">
+          <input type="hidden" name="form_action" value="request_item">
+          <input type="hidden" name="csrf_token" value="<?=mpText($itemRequestCsrf)?>">
+          <label class="mp-label" for="requestItemId">Item <span>*</span></label>
+          <select id="requestItemId" name="item_id" required>
+            <option value="">Select an item</option>
+            <?php foreach ($bodegaItems as $bodegaItem): ?>
+              <option value="<?=mpText($bodegaItem['item_id']??'')?>" <?=($itemRequestValues['item_id']===(string)($bodegaItem['item_id']??''))?'selected':''?>>
+                <?=mpText($bodegaItem['name']??'Item')?> · <?=mpText(ucfirst((string)($bodegaItem['item_type']??'')))?> · <?= bodegaAvailableQty($bodegaItem) ?> in stock
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <?php if (!$bodegaItems): ?><p class="mp-item-request-hint"><?=mpText(bodegaSetError()??'No Storage Unit items are currently available.')?></p><?php endif; ?>
+          <label class="mp-label" for="requestItemQty">Quantity <span>*</span></label>
+          <input id="requestItemQty" name="qty" type="number" min="1" value="<?=mpText($itemRequestValues['qty'])?>" required>
+          <label class="mp-label" for="requestItemRemarks">Remarks</label>
+          <textarea id="requestItemRemarks" name="remarks" rows="3" maxlength="180" placeholder="Add a note for the treasurer (optional)"><?=mpText($itemRequestValues['remarks'])?></textarea>
+          <div class="mp-modal-actions"><button type="button" class="mp-cancel" id="cancelItemRequestModal">Cancel</button><button type="submit" class="mp-btn" id="submitItemRequest" <?= !$bodegaItems?'disabled':'' ?>>Submit Request</button></div>
+        </form>
+      </div>
+    </div>
+
     <div class="mp-overlay" id="rejectModal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="rejectModalTitle">
       <div class="mp-modal">
         <div class="mp-modal-head"><div><h2 id="rejectModalTitle">Reject Maintenance Request</h2><p><?=mpText($request['display_id']??$request['request_id'])?></p></div><button type="button" class="mp-x" id="closeRejectModal" aria-label="Close">&times;</button></div>
@@ -427,6 +530,17 @@ document.addEventListener('DOMContentLoaded',()=>{
  modal.addEventListener('click',e=>{if(e.target===modal)close();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
  document.getElementById('maintenanceUpdateForm').addEventListener('submit',()=>{const b=document.getElementById('saveMaintenanceUpdate');b.disabled=true;b.textContent='Saving...';});
+
+ const itemRequestModal=document.getElementById('itemRequestModal');
+ const openItemRequest=()=>{itemRequestModal.style.display='flex';document.body.style.overflow='hidden';};
+ const closeItemRequest=()=>{itemRequestModal.style.display='none';document.body.style.overflow='';};
+ document.getElementById('openItemRequestModal').addEventListener('click',openItemRequest);
+ document.getElementById('closeItemRequestModal').addEventListener('click',closeItemRequest);
+ document.getElementById('cancelItemRequestModal').addEventListener('click',closeItemRequest);
+ itemRequestModal.addEventListener('click',e=>{if(e.target===itemRequestModal)closeItemRequest();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&itemRequestModal.style.display==='flex')closeItemRequest();});
+ if(itemRequestModal.style.display==='flex') document.body.style.overflow='hidden';
+ document.getElementById('itemRequestForm').addEventListener('submit',()=>{const b=document.getElementById('submitItemRequest');b.disabled=true;b.textContent='Submitting...';});
 
  /* ---- Photo drop zone: drag a file in, click to browse, or press Enter ---- */
  const dropzone=document.getElementById('mpDropzone');

@@ -81,7 +81,8 @@ if (!function_exists('mtRoleContext')) {
         }
 
         /* Shared pages that act for a role: Settings.php / Logout.php (?role=admin) */
-        if ($file === 'settings.php' || $file === 'logout.php' || $file === 'notification_poll.php') {
+        if ($file === 'settings.php' || $file === 'logout.php'
+            || $file === 'notification_poll.php' || $file === 'notification_mark_read.php') {
             return mtNormalizeRole($_GET['role'] ?? '');
         }
         return '';

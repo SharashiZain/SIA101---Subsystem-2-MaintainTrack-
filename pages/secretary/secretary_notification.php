@@ -1,7 +1,14 @@
 <?php
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../Components/layout.php';
 require_once __DIR__ . '/../../Components/notification_view.php';
+require_once __DIR__ . '/../../includes/role_notifications.php';
+
+renderRoleNotificationPage('secretary', 'Requests waiting for approval and decision updates', [
+    ['key' => 'request', 'label' => 'Requests'],
+    ['key' => 'status', 'label' => 'Status Updates'],
+]);
+exit;
 
 /* =========================================================
    Supabase helper (server-side only)
@@ -90,10 +97,12 @@ if ($assignRes['ok'] && is_array($assignRes['data'])) {
         $events[] = [
             'ts'       => $at->getTimestamp(),
             'color'    => 'blue',
+            'title'    => 'Maintenance Request Assigned',
             'text'     => $r['display_id'] . ' was assigned to ' . $worker . '.',
             'time'     => $at->format('M j, Y · g:i A'),
             'unread'   => $at->getTimestamp() >= $cutoff,
             'category' => 'assignment',
+            'related_request_id' => (string) $r['request_id'],
         ];
     }
 }
@@ -116,10 +125,12 @@ if (!empty($adminIds)) {
             $events[] = [
                 'ts'       => $at->getTimestamp(),
                 'color'    => 'orange',
+                'title'    => 'New Maintenance Request',
                 'text'     => 'New request ' . $r['display_id'] . ' (' . $r['concern'] . ') created by ' . $creator . '.',
                 'time'     => $at->format('M j, Y · g:i A'),
                 'unread'   => $at->getTimestamp() >= $cutoff,
                 'category' => 'request',
+                'related_request_id' => (string) $r['request_id'],
             ];
         }
     }
@@ -161,11 +172,13 @@ if ($rejRes['ok'] && is_array($rejRes['data']) && !empty($rejRes['data'])) {
         $events[] = [
             'ts'       => $at->getTimestamp(),
             'color'    => 'red',
+            'title'    => 'Maintenance Request Rejected',
             'text'     => $displayId . ' was rejected by ' . $worker
                 . ($reason !== '' ? ': ' . $reason . '.' : '.'),
             'time'     => $at->format('M j, Y · g:i A'),
             'unread'   => $at->getTimestamp() >= $cutoff,
             'category' => 'status',
+            'related_request_id' => (string) $rej['request_id'],
         ];
     }
 }
@@ -214,6 +227,10 @@ renderHead('Notifications', 'Notification.css', 'secretary');
                  data-category="<?= e($n['category']) ?>"
                  data-unread="<?= $n['unread'] ? 'true' : 'false' ?>"
                  data-id="<?= e($n['id']) ?>"
+                 data-title="<?= e($n['title']) ?>"
+                 data-message="<?= e($n['text']) ?>"
+                 data-time="<?= e($n['time']) ?>"
+                 data-request-url="<?= !empty($n['related_request_id']) ? e(rolePageUrl('secretary', 'RequestDetails.php') . '?id=' . rawurlencode((string) $n['related_request_id'])) : '' ?>"
                  data-index="<?= $index ?>">
                 <div class="icon-indicator bg-<?= e($n['color']) ?>">!</div>
                 <div class="notif-content">
@@ -232,12 +249,28 @@ renderHead('Notifications', 'Notification.css', 'secretary');
 
 </div>
 
+<dialog class="notification-details-modal" id="notificationDetailsModal" aria-labelledby="notificationDetailsTitle">
+    <div class="notification-details-content">
+        <button class="notification-details-close" type="button" aria-label="Close notification details">&times;</button>
+        <h2 id="notificationDetailsTitle"></h2>
+        <p class="notification-details-message" id="notificationDetailsMessage"></p>
+        <p class="notification-details-time" id="notificationDetailsTime"></p>
+        <a class="notification-details-link" id="notificationDetailsLink" href="" hidden>Go to request</a>
+    </div>
+</dialog>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const filterBtns = document.querySelectorAll('.filter-btn');
         const markAllReadBtn = document.getElementById('markAllReadBtn');
         const notificationItems = document.querySelectorAll('.notification-item');
         const noResults = document.getElementById('notifNoResults');
+        const detailsModal = document.getElementById('notificationDetailsModal');
+        const detailsTitle = document.getElementById('notificationDetailsTitle');
+        const detailsMessage = document.getElementById('notificationDetailsMessage');
+        const detailsTime = document.getElementById('notificationDetailsTime');
+        const detailsLink = document.getElementById('notificationDetailsLink');
+        const closeDetails = detailsModal.querySelector('.notification-details-close');
 
         let currentFilter = 'all';
 
@@ -292,6 +325,8 @@ renderHead('Notifications', 'Notification.css', 'secretary');
         });
 
         notificationItems.forEach(function (item) {
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
             item.addEventListener('click', function () {
                 if (this.getAttribute('data-unread') === 'true') {
                     this.classList.remove('unread');
@@ -300,7 +335,31 @@ renderHead('Notifications', 'Notification.css', 'secretary');
                     if (window.MTNotifSound && this.dataset.id) MTNotifSound.markRead([this.dataset.id]);
                     applyFilter();
                 }
+                detailsTitle.textContent = this.dataset.title || '';
+                detailsMessage.textContent = this.dataset.message || '';
+                detailsTime.textContent = this.dataset.time || '';
+                if (this.dataset.requestUrl) {
+                    detailsLink.href = this.dataset.requestUrl;
+                    detailsLink.hidden = false;
+                } else {
+                    detailsLink.removeAttribute('href');
+                    detailsLink.hidden = true;
+                }
+                detailsModal.showModal();
             });
+            item.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    this.click();
+                }
+            });
+        });
+
+        closeDetails.addEventListener('click', function () {
+            detailsModal.close();
+        });
+        detailsModal.addEventListener('click', function (event) {
+            if (event.target === detailsModal) detailsModal.close();
         });
 
         // Items already read earlier stay read after a reload

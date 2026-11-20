@@ -1,6 +1,6 @@
 <?php
 // Temporary MaintainTrack diagnostic page.
-// Save as: C:\xampp\htdocs\Sia\Config\test_supabase.php
+// Save as: C:\xampp\htdocs\MaintainTrack\Config\test_supabase.php
 // Remove this file after troubleshooting.
 
 ini_set('display_errors', '1');
@@ -28,19 +28,19 @@ echo '<div class="box">PHP version: ' . htmlspecialchars(PHP_VERSION, ENT_QUOTES
 echo '<div class="box">Current file: <code>' . htmlspecialchars(__FILE__, ENT_QUOTES, 'UTF-8') . '</code></div>';
 echo '<div class="box">cURL extension: ' . (function_exists('curl_init') ? '<span class="ok">Enabled</span>' : '<span class="bad">Not enabled</span>') . '</div>';
 
-$configPath = __DIR__ . DIRECTORY_SEPARATOR . 'supabase.php';
+$configPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR . 'supabase_client.php';
 echo '<div class="box">Config path: <code>' . htmlspecialchars($configPath, ENT_QUOTES, 'UTF-8') . '</code></div>';
 
 if (!is_file($configPath)) {
-    echo '<div class="box bad">STEP 2 FAILED: supabase.php was not found in this folder. Check the file location and filename.</div>';
+    echo '<div class="box bad">STEP 2 FAILED: includes/supabase_client.php was not found. Check the file location and filename.</div>';
     exit;
 }
 
-echo '<div class="box ok">STEP 2: supabase.php file exists.</div>';
+echo '<div class="box ok">STEP 2: includes/supabase_client.php exists.</div>';
 
 try {
     require_once $configPath;
-    echo '<div class="box ok">STEP 3: supabase.php loaded without a thrown exception.</div>';
+    echo '<div class="box ok">STEP 3: Supabase client loaded without a thrown exception.</div>';
 } catch (Throwable $e) {
     echo '<div class="box bad"><strong>STEP 3 FAILED:</strong><pre>'
         . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8')

@@ -49,7 +49,7 @@ Shared pages (not tied to one role) are `Index.php`, `Login.php`, `Logout.php`, 
 
 ### Supabase Backend and Storage
 
-The server reaches Supabase with PHP cURL through `Config/supabase.php`:
+The server reaches Supabase with PHP cURL through `includes/supabase_client.php`:
 
 - **Database (PostgreSQL via REST, `/rest/v1/`):** core tables `users`, `facilities`, `facility_floors`, `facility_rooms`, `equipment`, `maintenance_requests`, `assignments`, `request_timeline`, `maintenance_updates`, `maintenance_rejections`, `activity_log`, `notifications`; bodega tables `inventory_items`, `inventory_transactions`, `procurements`; and reporting views `recurring_equipment`, `request_summary`, `staff_open_tasks`.
 - **Authentication (Supabase Auth, `/auth/v1/`):** login checks run on the server, so the secret key never reaches the browser.
@@ -59,7 +59,7 @@ The server reaches Supabase with PHP cURL through `Config/supabase.php`:
   - `bodega-documents`: documents attached to bodega records.
 
 > [!WARNING]
-> `Config/supabase.php` contains the Supabase keys in plain text. Keep this repository private, and move the secret key to an environment variable or a file outside the web root before sharing or deploying the project.
+> Supabase settings are loaded by `includes/supabase_client.php` from the ignored project-root `.env` file or server environment variables. Keep `.env` private and never commit it.
 
 ### Role-Separated Sessions
 
@@ -132,10 +132,10 @@ Sia/
 ├── README.md
 │
 ├── Config/
-│   ├── supabase.php               # Supabase URL, keys, REST/Storage client, bucket names
 │   └── test_supabase.php          # Connectivity diagnostic for cURL and Supabase
 │
 ├── includes/                      # Backend helpers, no HTML
+│   ├── supabase_client.php        # Loads .env settings and provides REST/Storage helpers
 │   ├── session.php                # Role-isolated session handler
 │   ├── PriorityScore.php          # Priority formula, levels, and queue builder
 │   ├── DuplicateReport.php        # Duplicate-report detection
@@ -188,11 +188,11 @@ Sia/
 
 1. Copy the project into your web root, for example `C:\xampp\htdocs\Sia`.
 2. Start **Apache** in the XAMPP Control Panel. A local MySQL server is not needed, because the database is hosted on Supabase.
-3. Set the Supabase values in `Config/supabase.php`:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SECRET_KEY`
-   - `SUPABASE_STORAGE_BUCKET` (currently `report-images`)
+3. Copy `.env.example` to `.env` in the project root and set:
+   - `MAINTAINTRACK_SUPABASE_URL`
+   - `MAINTAINTRACK_SUPABASE_ANON_KEY`
+   - `MAINTAINTRACK_SUPABASE_SECRET_KEY` (server-only)
+   - The storage bucket remains configured as `report-images` in the PHP client.
 4. Check connectivity at `http://localhost/Sia/Config/test_supabase.php`.
 5. Open the login page at `http://localhost/Sia/Index.php`.
 
@@ -235,7 +235,7 @@ Separately, the treasurer records bodega movements (borrow, return, use, procure
    <?php
    require_once __DIR__ . '/../../includes/session.php';
    require_once __DIR__ . '/../../Components/layout.php';
-   require_once __DIR__ . '/../../Config/supabase.php';
+   require_once __DIR__ . '/../../includes/supabase_client.php';
 
    renderHead('Analytics', 'secretary/secretary_Analytics.css', 'secretary');
    ?>
@@ -257,12 +257,15 @@ Separately, the treasurer records bodega movements (borrow, return, use, procure
 4. Put page-specific styles in `assets/css/<role>/`, named `<role>_<Page>.css`. The stylesheet path passed to `renderHead()` is relative to `assets/css/`.
 
 > [!IMPORTANT]
-> Keep `Config/supabase.php` values out of documentation, screenshots, and commits.
+> Keep Supabase service-role keys in the ignored project-root `.env` file or server environment variables. Never place them in browser code, documentation, screenshots, or commits. `includes/supabase_client.php` loads `MAINTAINTRACK_SUPABASE_SECRET_KEY` from that configuration.
 
 ---
 
 ## Known Notes
 
 - **Leftover archives:** `pages/admin.zip`, `pages/maintenance.zip`, and `pages/regular.zip` are old copies of the page folders. They are not used by the app and can be deleted once you confirm the matching folders are complete.
-- **Hardcoded keys:** The Supabase secret key is stored in `Config/supabase.php`. See the warning in [Supabase Backend and Storage](#supabase-backend-and-storage).
+- **Supabase credentials:** Configure `MAINTAINTRACK_SUPABASE_SECRET_KEY` in the ignored project-root `.env` file. If a secret key was previously committed or shared, rotate it in Supabase and update each server's `.env`.
 - **Open to-do items:** `docs/importante.txt` lists pending work, including dropdown placeholder fixes, notification fixes, the mobile layout plan, and filter and reset behavior.
+# Central integration backfill
+
+After applying `sql/migration_central_backfill.sql`, run `php scripts/backfill_central_records.php` from the project root. It snapshots existing maintenance requests and outcomes into the same transactional outbox used by live changes. The scheduled publisher delivers the events asynchronously; rerun safely to resume. Pass `--reconcile` to reset both checkpoints and enqueue corrective snapshots again.

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/bodega.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -29,7 +29,18 @@ function trReleaseWorkers(): array {
     $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     $data = $raw ? json_decode($raw, true) : null;
-    return ($code >= 200 && $code < 300 && is_array($data)) ? $data : [];
+    if ($code < 200 || $code >= 300 || !is_array($data)) {
+        return [];
+    }
+
+    $uniqueWorkers = [];
+    foreach ($data as $worker) {
+        $id = (string) ($worker['user_id'] ?? '');
+        if ($id !== '' && !isset($uniqueWorkers[$id])) {
+            $uniqueWorkers[$id] = $worker;
+        }
+    }
+    return array_values($uniqueWorkers);
 }
 
 /* ---- Letter view: short-lived link to the scanned letter ---- */
@@ -54,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $itemMap = bodegaItemMap($items);
 
     if (!$itemMap) {
-        bodegaFlash('error', bodegaSetError() ?? 'No bodega items found.');
+        bodegaFlash('error', bodegaSetError() ?? 'No Storage Unit items found.');
         bodegaRedirectHere();
     }
 
@@ -67,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $txn  = $rows[0] ?? null;
         $item = $txn ? ($itemMap[(string) $txn['item_id']] ?? null) : null;
         if (!$txn || !$item) {
-            bodegaFlash('error', 'That record was not found in the bodega.');
+            bodegaFlash('error', 'That record was not found in the Storage Unit.');
             bodegaRedirectHere();
         }
         $qty = (int) $txn['qty'];
@@ -88,18 +99,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 bodegaFlash('error', 'Only pending requests can be approved.');
                 bodegaRedirectHere();
             }
-            $err = bodegaAdjustStock((string) $item['item_id'], -$qty);
-            if ($err === null) {
-                $fields = ['status' => 'released', 'released_by' => $actor];
-                if (($txn['txn_type'] ?? '') === 'borrow' && empty($txn['due_date'])) {
-                    $fields['due_date'] = date('Y-m-d', strtotime('+7 days'));
-                }
-                $err = bodegaUpdate('inventory_transactions', $filter, $fields);
-                if ($err !== null) {
-                    bodegaAdjustStock((string) $item['item_id'], $qty); // undo the stock change
-                }
+
+            $isBorrow = ($txn['txn_type'] ?? '') === 'borrow';
+            $isStaffItemRequest = ($txn['borrower_type'] ?? '') === 'staff'
+                && in_array(($txn['txn_type'] ?? ''), ['borrow', 'use'], true);
+            $borrowerId = trim((string) ($txn['borrower_user_id'] ?? ''));
+            if ($isStaffItemRequest && !preg_match('/^[0-9a-fA-F-]{36}$/', $borrowerId)) {
+                bodegaFlash('error', 'This item request has no valid requester account. It was not approved.');
+                bodegaRedirectHere();
             }
-            bodegaFlash($err === null ? 'success' : 'error', $err === null ? 'Request approved and released.' : 'Could not approve. ' . $err);
+
+            if ($actor === null) {
+                bodegaFlash('error', 'A valid treasurer account is required to approve this request.');
+                bodegaRedirectHere();
+            }
+
+            $approval = bodegaRest('POST', 'rpc/approve_inventory_transaction', [
+                'p_txn_id' => $txnId,
+                'p_released_by' => $actor,
+                'p_default_due_date' => date('Y-m-d', strtotime('+7 days')),
+            ]);
+            $approvalData = $approval['data'] ?? null;
+            $err = !$approval['success']
+                ? (string) ($approval['error'] ?? 'Supabase could not approve the request.')
+                : ((!is_array($approvalData) || ($approvalData['approved'] ?? false) !== true)
+                    ? 'Supabase did not confirm the approval.'
+                    : (($isStaffItemRequest && ($approvalData['notified'] ?? false) !== true)
+                        ? 'Approval completed without confirming a requester notification. Verify the request before retrying.'
+                        : null));
+            bodegaFlash($err === null ? 'success' : 'error', $err === null
+                ? ($isStaffItemRequest
+                    ? ($isBorrow ? 'Borrow request approved; the borrower was notified.' : 'Item request approved; the requester was notified.')
+                    : 'Request approved and released.')
+                : 'Could not approve. ' . $err);
             bodegaRedirectHere();
         }
 
@@ -108,26 +140,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             bodegaFlash('error', 'Only released borrows can be returned.');
             bodegaRedirectHere();
         }
-        $err = bodegaAdjustStock((string) $item['item_id'], $qty);
-        if ($err === null) {
-            $err = bodegaUpdate('inventory_transactions', $filter, ['status' => 'returned', 'returned_at' => date('c')]);
-            if ($err !== null) {
-                bodegaAdjustStock((string) $item['item_id'], -$qty);
-            } else {
-                bodegaInsert('inventory_transactions', [
-                    'item_id'          => $item['item_id'],
-                    'txn_type'         => 'return',
-                    'qty'              => $qty,
-                    'status'           => 'returned',
-                    'borrower_type'    => $txn['borrower_type'] ?? 'staff',
-                    'borrower_user_id' => $txn['borrower_user_id'] ?? null,
-                    'outsider_name'    => $txn['outsider_name'] ?? null,
-                    'outsider_contact' => $txn['outsider_contact'] ?? null,
-                    'released_by'      => $actor,
-                    'notes'            => 'Returned (borrow ' . $txnId . ')',
-                ]);
-            }
-        }
+        $returned = $actor === null
+            ? ['success' => false, 'error' => 'A valid treasurer account is required to record this return.']
+            : bodegaRest('POST', 'rpc/return_inventory_transaction', [
+                'p_txn_id' => $txnId,
+                'p_returned_by' => $actor,
+                'p_borrower_user_id' => null,
+            ]);
+        $returnData = $returned['data'] ?? null;
+        $err = !$returned['success']
+            ? (string) ($returned['error'] ?? 'Supabase could not record the return.')
+            : ((!is_array($returnData) || ($returnData['returned'] ?? false) !== true)
+                ? 'Supabase did not confirm the return.'
+                : null);
         bodegaFlash($err === null ? 'success' : 'error', $err === null ? 'Item marked as returned.' : 'Could not return. ' . $err);
         bodegaRedirectHere();
     }
@@ -221,6 +246,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /* ---- Data ---- */
 $items    = bodegaItems();
+$uniqueItems = [];
+foreach ($items as $item) {
+    $id = (string) ($item['item_id'] ?? '');
+    if ($id !== '' && !isset($uniqueItems[$id])) {
+        $uniqueItems[$id] = $item;
+    }
+}
+$items = array_values($uniqueItems);
 $itemMap  = bodegaItemMap($items);
 $txns     = bodegaTransactions($itemMap);
 $pageError = bodegaSetError() ?? '';
@@ -255,10 +288,6 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
     <?php if ($pageError !== ''): ?>
         <div class="tr-alert error" role="alert"><?= e($pageError) ?></div>
     <?php endif; ?>
-    <?php if ($flash): ?>
-        <div class="tr-alert <?= e($flash['type']) ?>" role="status"><?= e($flash['text']) ?></div>
-    <?php endif; ?>
-
     <!-- Pending requests from maintenance workers -->
     <section class="tr-panel">
         <h2 class="tr-section-title">Pending requests <span class="tr-count"><?= count($pending) ?></span></h2>
@@ -289,10 +318,15 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
     </section>
 
     <!-- Active borrows -->
-    <section class="tr-panel">
-        <h2 class="tr-section-title">Borrowed, not yet returned <span class="tr-count"><?= count($active) ?></span></h2>
+    <section class="tr-panel" data-table-filter-section="active-borrows">
+        <h2 class="tr-section-title">Borrowed Items <span class="tr-count"><?= count($active) ?></span></h2>
+        <div class="tr-table-filters" role="group" aria-label="Filter borrowed items">
+            <button class="tr-filter-btn active" type="button" data-filter-group="active-borrows" data-filter-value="all" aria-pressed="true">All</button>
+            <button class="tr-filter-btn" type="button" data-filter-group="active-borrows" data-filter-value="borrowed" aria-pressed="false">Borrowed</button>
+            <button class="tr-filter-btn" type="button" data-filter-group="active-borrows" data-filter-value="overdue" aria-pressed="false">Overdue</button>
+        </div>
         <?php if (!$active): ?>
-            <p class="tr-empty">Nothing is out on loan.</p>
+            <p class="tr-empty">No borrowed items are currently out.</p>
         <?php else: ?>
         <div class="tr-table-wrap">
             <table class="tr-table">
@@ -302,7 +336,7 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
                     $item = $itemMap[(string) $t['item_id']] ?? [];
                     $overdue = bodegaIsOverdue($t, $item);
                 ?>
-                    <tr>
+                    <tr data-filter-row="active-borrows" data-filter-value="<?= $overdue ? 'overdue' : 'borrowed' ?>">
                         <td class="tr-strong"><?= e($item['name'] ?? '') ?></td>
                         <td><?= (int) $t['qty'] ?></td>
                         <td><?= e(trBorrower($t, $names)) ?></td>
@@ -320,6 +354,9 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                    <tr class="tr-filter-empty" data-filter-empty="active-borrows" hidden>
+                        <td colspan="7">No borrowed items match this filter.</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -343,7 +380,7 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
                     <option value="" disabled hidden selected>Select an item</option>
                     <?php foreach ($items as $item): ?>
                         <option value="<?= e($item['item_id']) ?>">
-                            <?= e($item['name']) ?> · <?= (int) $item['current_qty'] ?> in stock · <?= e(ucfirst((string) $item['item_type'])) ?>
+                            <?= e($item['name']) ?> · <?= bodegaAvailableQty($item) ?> in stock · <?= e(ucfirst((string) $item['item_type'])) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -395,17 +432,23 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
     </details>
 
     <!-- Recent movements -->
-    <section class="tr-panel">
-        <h2 class="tr-section-title">Recent movements</h2>
+    <section class="tr-panel" data-table-filter-section="recent-transactions">
+        <h2 class="tr-section-title">Recent Transactions</h2>
+        <div class="tr-table-filters" role="group" aria-label="Filter recent transactions">
+            <button class="tr-filter-btn active" type="button" data-filter-group="recent-transactions" data-filter-value="all" aria-pressed="true">All</button>
+            <button class="tr-filter-btn" type="button" data-filter-group="recent-transactions" data-filter-value="use" aria-pressed="false">Use</button>
+            <button class="tr-filter-btn" type="button" data-filter-group="recent-transactions" data-filter-value="borrow" aria-pressed="false">Borrow</button>
+            <button class="tr-filter-btn" type="button" data-filter-group="recent-transactions" data-filter-value="return" aria-pressed="false">Return</button>
+        </div>
         <?php if (!$recent): ?>
-            <p class="tr-empty">No movements yet.</p>
+            <p class="tr-empty">No recent transactions.</p>
         <?php else: ?>
         <div class="tr-table-wrap">
             <table class="tr-table">
                 <thead><tr><th>When</th><th>Item</th><th>Movement</th><th>Qty</th><th>Who</th><th>Status</th></tr></thead>
                 <tbody>
                 <?php foreach ($recent as $t): $item = $itemMap[(string) $t['item_id']] ?? []; ?>
-                    <tr>
+                    <tr data-filter-row="recent-transactions" data-filter-value="<?= e(strtolower((string) ($t['txn_type'] ?? ''))) ?>">
                         <td><?= e(bodegaDate($t['created_at'] ?? '')) ?></td>
                         <td class="tr-strong"><?= e($item['name'] ?? '') ?></td>
                         <td><?= e(ucfirst((string) ($t['txn_type'] ?? ''))) ?></td>
@@ -414,6 +457,9 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
                         <td><span class="tr-badge <?= e($t['status'] ?? '') ?>"><?= e(ucfirst((string) ($t['status'] ?? ''))) ?></span></td>
                     </tr>
                 <?php endforeach; ?>
+                    <tr class="tr-filter-empty" data-filter-empty="recent-transactions" hidden>
+                        <td colspan="6">No transactions match this filter.</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -425,7 +471,32 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('releaseForm');
+            document.querySelectorAll('[data-filter-group]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const group = this.dataset.filterGroup;
+                    const value = this.dataset.filterValue;
+                    const section = document.querySelector('[data-table-filter-section="' + group + '"]');
+                    if (!section) return;
+
+                    section.querySelectorAll('[data-filter-group="' + group + '"]').forEach(function (filterButton) {
+                        const selected = filterButton === button;
+                        filterButton.classList.toggle('active', selected);
+                        filterButton.setAttribute('aria-pressed', selected ? 'true' : 'false');
+                    });
+
+                    let visibleCount = 0;
+                    section.querySelectorAll('[data-filter-row="' + group + '"]').forEach(function (row) {
+                        const visible = value === 'all' || row.dataset.filterValue === value;
+                        row.hidden = !visible;
+                        if (visible) visibleCount++;
+                    });
+
+                    const emptyRow = section.querySelector('[data-filter-empty="' + group + '"]');
+                    if (emptyRow) emptyRow.hidden = visibleCount > 0;
+                });
+            });
+
+            const form = document.getElementById('releaseForm');
         const radios = form.querySelectorAll('input[name="borrower_type"]');
 
         function sync() {
@@ -444,4 +515,12 @@ renderHead('Borrow / Return', 'Borrow.css', 'treasurer');
     });
 </script>
 <?php renderFoot(); ?>
+<?php if ($flash): ?>
+<script>
+window.AppToast.show(
+    <?= json_encode((string) ($flash['text'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode(($flash['type'] ?? '') === 'error' ? 'error' : 'success') ?>
+);
+</script>
+<?php endif; ?>
 <script src="<?= e(appAssetUrl('assets/js/LoadingOverlay.js')) ?>"></script>

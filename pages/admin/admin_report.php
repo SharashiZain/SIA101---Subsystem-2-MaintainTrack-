@@ -107,7 +107,7 @@ renderHead('Reports', 'Report.css');
             <div class="form-group">
                 <label for="paramLab">Laboratory</label>
                 <select id="paramLab">
-                    <option value="All labs" disabled hidden selected>All labs</option>
+                    <option value="" selected>All labs</option>
                     <option value="Lab 1 (B1)">Lab 1 (B1)</option>
                     <option value="Lab 2 (B1)">Lab 2 (B1)</option>
                     <option value="Lab 3 (B1)">Lab 3 (B1)</option>
@@ -117,7 +117,7 @@ renderHead('Reports', 'Report.css');
             <div class="form-group">
                 <label for="paramCategory">Category</label>
                 <select id="paramCategory">
-                    <option value="All categories" disabled hidden selected>All categories</option>
+                    <option value="" selected>All categories</option>
                     <option value="Hardware">Hardware</option>
                     <option value="Software">Software</option>
                     <option value="Network">Network</option>
@@ -789,10 +789,10 @@ renderHead('Reports', 'Report.css');
         const hintIcons = { info: 'i', success: '✓', warn: '!' };
 
         function paramsKey() {
-            return [periodInput.value, labSelect.value, categorySelect.value].join('|');
+            return [periodInput.value, labSelect.value || 'All labs', categorySelect.value || 'All categories'].join('|');
         }
         function paramsLabel() {
-            return [periodInput.value, labSelect.value, categorySelect.value].join(' · ');
+            return [periodInput.value, labSelect.value || 'All labs', categorySelect.value || 'All categories'].join(' · ');
         }
         function setHint(kind, text) {
             previewHint.className = 'preview-hint ' + kind;

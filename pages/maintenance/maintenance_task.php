@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -96,12 +96,33 @@ if ($currentUsername === '' && $currentUserId === '') {
     }
 
     if ($pageError === '') {
+        $assignmentResult = taskApi(
+            'assignments?assigned_to=eq.' . rawurlencode($currentUserId)
+            . '&select=request_id&limit=1000'
+        );
+        if (!$assignmentResult['success'] || !is_array($assignmentResult['data'])) {
+            $pageError = 'Unable to load your assignments. ' . (string) ($assignmentResult['error'] ?? '');
+        }
+
+        $assignedRequestIds = [];
+        foreach (($assignmentResult['data'] ?? []) as $assignment) {
+            $assignedRequestId = (string) ($assignment['request_id'] ?? '');
+            if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $assignedRequestId)) {
+                $assignedRequestIds[$assignedRequestId] = true;
+            }
+        }
+        $requestFilters = ['assigned_to.eq.' . $currentUserId];
+        if ($assignedRequestIds) {
+            $requestFilters[] = 'request_id.in.(' . implode(',', array_keys($assignedRequestIds)) . ')';
+        }
         $requestResult = taskApi(
-            'maintenance_requests?assigned_to=eq.'.rawurlencode($currentUserId).
+            'maintenance_requests?or=(' . implode(',', $requestFilters) . ')' .
             '&select=request_id,display_id,concern,description,category,equipment_category,priority,status,facility_id,floor_id,room_id,equipment_id,specific_area,date_reported,created_at,date_assigned'.
             '&order=created_at.desc.nullslast'
         );
-        if (!$requestResult['success']) {
+        if ($pageError !== '') {
+            $tasks = [];
+        } elseif (!$requestResult['success']) {
             $pageError = 'Unable to load your tasks. '.(string)($requestResult['error'] ?? 'Please check the maintenance_requests table.');
         } else {
             $tasks = is_array($requestResult['data']) ? $requestResult['data'] : [];
@@ -189,14 +210,14 @@ renderHead('My Tasks', 'Task.css', 'maintenance');
         <input type="text" placeholder="Search task..." id="taskSearch" aria-label="Search tasks">
       </div>
       <select class="filter-select" id="taskStatusFilter" aria-label="Filter by status">
-        <option value="" disabled hidden selected>All Status</option>
+        <option value="" selected>All Status</option>
         <option value="pending">Pending / Assigned</option>
         <option value="progress">In Progress</option>
         <option value="completed">Completed</option>
         <option value="rejected">Rejected</option>
       </select>
       <select class="filter-select" id="taskFacilityFilter" aria-label="Filter by facility">
-        <option value="" disabled hidden selected>All Facilities</option>
+        <option value="" selected>All Facilities</option>
         <?php
         $taskFacilityNames = [];
         foreach ($tasks as $task) {

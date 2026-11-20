@@ -2,10 +2,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-/* Registry server-side Supabase helper. Keep the secret key in Config/supabase.php only. */
+/* Registry server-side Supabase helper. Keep the secret key in includes/supabase_client.php only. */
 function registryRequest(string $method, string $endpoint, ?array $payload = null, array $extraHeaders = []): array {
     if (!defined('SUPABASE_URL') || !defined('SUPABASE_SECRET_KEY') || !function_exists('curl_init')) {
         return ['success'=>false,'status'=>0,'data'=>null,'error'=>'Missing Supabase configuration or PHP cURL.'];
@@ -112,9 +112,9 @@ renderHead('Equipment Registry','Registry.css');
   <?php renderPageHeader('Equipment Registry'); ?>
   <div class="card-header">
     <div class="search-wrapper"><span class="search-icon">🔍</span><input id="registrySearch" class="search-bar" placeholder="Search ID, name, facility, floor, room"></div>
-    <select class="registry-filter" id="registryTypeFilter"><option value="" disabled hidden selected>All Types</option><?php foreach($types as $label=>$code): ?><option><?=registryEscape($label)?></option><?php endforeach; ?></select>
-    <select class="registry-filter" id="registryFacilityFilter"><option value="" disabled hidden selected>All Labs</option><?php foreach($facilities as $f): ?><option value="<?=registryEscape($f['name'])?>"><?=registryEscape($f['name'])?></option><?php endforeach; ?></select>
-    <select class="registry-filter" id="registryCategoryFilter"><option value="" disabled hidden selected>All Categories</option><option>Electrical</option><option>Non Electrical</option></select>
+    <select class="registry-filter" id="registryTypeFilter"><option value="" selected>All Types</option><?php foreach($types as $label=>$code): ?><option><?=registryEscape($label)?></option><?php endforeach; ?></select>
+    <select class="registry-filter" id="registryFacilityFilter"><option value="" selected>All Labs</option><?php foreach($facilities as $f): ?><option value="<?=registryEscape($f['name'])?>"><?=registryEscape($f['name'])?></option><?php endforeach; ?></select>
+    <select class="registry-filter" id="registryCategoryFilter"><option value="" selected>All Categories</option><option>Electrical</option><option>Non Electrical</option></select>
     <button class="reset-btn" type="button" id="registryReset">Reset</button><button class="add-btn" type="button" id="addEquipmentBtn">+ Add Equipment</button>
   </div>
   <?php if($error!==''): ?><div class="registry-alert error" id="registryServerError" style="display:none"><?=registryEscape($error)?></div><?php endif; ?>
@@ -230,8 +230,8 @@ document.addEventListener('DOMContentLoaded',()=>{
  const floors=<?=json_encode($floors,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>, rooms=<?=json_encode($rooms,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
  const facility=document.getElementById('facility_id'), floor=document.getElementById('floor_id'), room=document.getElementById('room_id'), type=document.getElementById('equipment_type'), modal=document.getElementById('addEquipmentModal');
  const search=document.getElementById('registrySearch'), typeFilter=document.getElementById('registryTypeFilter'), categoryFilter=document.getElementById('registryCategoryFilter');
- // Placeholder is a hidden option, so it only shows as the label and never appears in the list of choices.
- function fill(select,placeholder,items,key){select.innerHTML='';const ph=new Option(placeholder,'');ph.disabled=true;ph.hidden=true;ph.selected=true;select.add(ph);items.forEach(x=>{const o=new Option(x.name+(x.code?' ('+x.code+')':''),String(x[key]??''));o.dataset.code=x.code||'';select.add(o)});select.disabled=items.length===0}
+ // Keep the prompt selectable so users can return to an empty selection.
+ function fill(select,placeholder,items,key){select.innerHTML='';const ph=new Option(placeholder,'');ph.selected=true;select.add(ph);items.forEach(x=>{const o=new Option(x.name+(x.code?' ('+x.code+')':''),String(x[key]??''));o.dataset.code=x.code||'';select.add(o)});select.disabled=items.length===0}
  function floorsChanged(){
    const facilityId=String(facility.value||'').trim();
    const matching=floors.filter(x=>String(x.facility_id||'').trim()===facilityId);

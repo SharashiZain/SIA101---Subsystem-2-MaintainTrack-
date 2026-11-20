@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 
 /*
  * MaintainTrack - User & Role Management
@@ -18,6 +18,14 @@ function usersJsonResponse(array $payload, int $status = 200): never
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+function usersNormalizeSpecializationCategory(string $category): string
+{
+    $value = trim($category);
+    return strtolower(preg_replace('/[^a-z]/i', '', $value)) === 'nonelectrical'
+        ? 'Non-Electrical'
+        : $value;
 }
 
 function usersSupabaseRequest(
@@ -157,6 +165,8 @@ function userRoleLabel(string $role): string
 {
     return match ($role) {
         'admin' => 'Admin',
+        'secretary' => 'Secretary',
+        'treasurer' => 'Treasurer',
         'maintenance' => 'Maintenance Staff',
         default => 'Regular User'
     };
@@ -213,7 +223,7 @@ if (isset($_GET['users_api']) || isset($_POST['users_api'])) {
         $email = strtolower(trim((string) ($_POST['email'] ?? '')));
         $role = trim((string) ($_POST['role'] ?? ''));
         $status = trim((string) ($_POST['status'] ?? ''));
-        $specializationCategory = trim((string) ($_POST['specialization_category'] ?? ''));
+        $specializationCategory = usersNormalizeSpecializationCategory((string) ($_POST['specialization_category'] ?? ''));
         $specializationType = trim((string) ($_POST['specialization_type'] ?? ''));
 
         if (!preg_match(
@@ -240,7 +250,7 @@ if (isset($_GET['users_api']) || isset($_POST['users_api'])) {
             ], 422);
         }
 
-        if (!in_array($role, ['admin', 'regular', 'maintenance'], true)) {
+        if (!in_array($role, ['admin', 'regular', 'maintenance', 'secretary', 'treasurer'], true)) {
             usersJsonResponse([
                 'success' => false,
                 'message' => 'Select a valid role.'
@@ -454,7 +464,7 @@ if (isset($_GET['users_api']) || isset($_POST['users_api'])) {
         $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
         $role = trim((string) ($_POST['role'] ?? ''));
         $status = trim((string) ($_POST['status'] ?? 'Active'));
-        $specializationCategory = trim((string) ($_POST['specialization_category'] ?? ''));
+        $specializationCategory = usersNormalizeSpecializationCategory((string) ($_POST['specialization_category'] ?? ''));
         $specializationType = trim((string) ($_POST['specialization_type'] ?? ''));
 
         if ($name === '' || mb_strlen($name) > 100) {
@@ -492,7 +502,7 @@ if (isset($_GET['users_api']) || isset($_POST['users_api'])) {
             ], 422);
         }
 
-        if (!in_array($role, ['admin', 'regular', 'maintenance'], true)) {
+        if (!in_array($role, ['admin', 'regular', 'maintenance', 'secretary', 'treasurer'], true)) {
             usersJsonResponse([
                 'success' => false,
                 'message' => 'Select a valid role.'
@@ -643,14 +653,16 @@ renderHead('User & Role Management', 'Users.css');
             </div>
 
             <select class="user-filter" id="userRoleFilter">
-                <option value="" disabled hidden selected>All Roles</option>
+                <option value="" selected>All Roles</option>
                 <option value="admin">Admin</option>
+                <option value="secretary">Secretary</option>
+                <option value="treasurer">Treasurer</option>
                 <option value="regular">Regular User</option>
                 <option value="maintenance">Maintenance Staff</option>
             </select>
 
             <select class="user-filter" id="userStatusFilter">
-                <option value="" disabled hidden selected>All Statuses</option>
+                <option value="" selected>All Statuses</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
             </select>
@@ -774,6 +786,8 @@ renderHead('User & Role Management', 'Users.css');
             <select id="newUserRole">
                 <option value="" disabled hidden selected>Select role</option>
                 <option value="admin">Admin</option>
+                <option value="secretary">Secretary</option>
+                <option value="treasurer">Treasurer</option>
                 <option value="regular">Regular User</option>
                 <option value="maintenance">Maintenance Personnel</option>
             </select>
@@ -833,6 +847,8 @@ renderHead('User & Role Management', 'Users.css');
             <label for="editUserRole">Role</label>
             <select id="editUserRole">
                 <option value="admin">Admin</option>
+                <option value="secretary">Secretary</option>
+                <option value="treasurer">Treasurer</option>
                 <option value="regular">Regular User</option>
                 <option value="maintenance">Maintenance Personnel</option>
             </select>
@@ -983,8 +999,16 @@ document.addEventListener('DOMContentLoaded', function () {
         'Non-Electrical': ['Plumber', 'Pipefitter', 'Carpenter', 'Mason', 'Painter', 'General Maintenance Technician']
     };
 
+    function normalizeSpecializationCategory(category) {
+        const value = String(category || '').trim();
+        return value.replace(/[^a-z]/gi, '').toLowerCase() === 'nonelectrical'
+            ? 'Non-Electrical'
+            : value;
+    }
+
     function populateSpecializationTypes(prefix, category, selectedType = '') {
         const typeSelect = document.getElementById(prefix + 'SpecializationType');
+        category = normalizeSpecializationCategory(category);
         // The placeholder is a hidden option: it shows as the label only, never as a choice.
         typeSelect.innerHTML = '<option value="" disabled hidden selected>Select technician type</option>';
         (specializationOptions[category] || []).forEach(type => {
@@ -1279,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('editUserName').value = button.dataset.userName || '';
         document.getElementById('editUserEmail').value = button.dataset.userEmail || '';
         document.getElementById('editUserRole').value = button.dataset.userRole || 'regular';
-        const category = button.dataset.userSpecializationCategory || '';
+        const category = normalizeSpecializationCategory(button.dataset.userSpecializationCategory || '');
         document.getElementById('editSpecializationCategory').value = category;
         populateSpecializationTypes('edit', category, button.dataset.userSpecializationType || '');
         toggleSpecializationFields('edit');
@@ -1403,6 +1427,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 text: 'Changes for "' + user.full_name + '" were saved to Supabase.',
                 confirmText: 'OK'
             });
+            window.AppToast.show('User updated successfully.');
         } catch (error) {
             showError('Update failed', error.message || 'An unexpected error occurred.');
         } finally {
@@ -1467,6 +1492,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 text: 'The account and its user profile have been deleted.',
                                 confirmText: 'OK'
                             });
+                            window.AppToast.show('Account deleted successfully.');
                         } catch (error) {
                             button.disabled = false;
                             button.textContent = 'Delete';

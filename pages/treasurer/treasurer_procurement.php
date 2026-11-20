@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/bodega.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -134,10 +134,6 @@ renderHead('Procurement', 'Procurement.css', 'treasurer');
     <?php if ($pageError !== ''): ?>
         <div class="tr-alert error" role="alert"><?= e($pageError) ?></div>
     <?php endif; ?>
-    <?php if ($flash): ?>
-        <div class="tr-alert <?= e($flash['type']) ?>" role="status"><?= e($flash['text']) ?></div>
-    <?php endif; ?>
-
     <div class="tr-kpis">
         <div class="tr-kpi">
             <span>Spent this month</span>
@@ -185,7 +181,7 @@ renderHead('Procurement', 'Procurement.css', 'treasurer');
     <section class="tr-toolbar">
         <form method="get" class="tr-inline">
             <select class="tr-select" name="item_id" onchange="this.form.submit()">
-                <option value="" disabled hidden <?= $filterItem === '' ? 'selected' : '' ?>>All items</option>
+                <option value="" <?= $filterItem === '' ? 'selected' : '' ?>>All items</option>
                 <?php foreach ($items as $item): ?>
                     <option value="<?= e($item['item_id']) ?>" <?= $filterItem === (string) $item['item_id'] ? 'selected' : '' ?>><?= e($item['name']) ?></option>
                 <?php endforeach; ?>
@@ -237,4 +233,12 @@ renderHead('Procurement', 'Procurement.css', 'treasurer');
     </div>
 </div>
 <?php renderFoot(); ?>
+<?php if ($flash): ?>
+<script>
+window.AppToast.show(
+    <?= json_encode((string) ($flash['text'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode(($flash['type'] ?? '') === 'error' ? 'error' : 'success') ?>
+);
+</script>
+<?php endif; ?>
 <script src="<?= e(appAssetUrl('assets/js/LoadingOverlay.js')) ?>"></script>

@@ -8,6 +8,7 @@
    $items   : [ ['tone' => blue|green|purple|orange|red,
                  'title' => '', 'text' => '', 'time' => '',
                  'unread' => bool, 'category' => 'slug',
+                 'related_request_id' => 'request id (optional)',
                  'id' => 'stable id (see notificationItemId)'], ... ]
    $filters : extra filter buttons after All / Unread:
               [ ['key' => 'slug', 'label' => 'Label'], ... ]
@@ -51,6 +52,12 @@ if (!function_exists('notificationFeedRespond')) {
 if (!function_exists('renderNotificationPage')) {
     function renderNotificationPage(string $role, ?string $subtitle, array $items, array $filters = []): void
     {
+        $detailPage = match ($role) {
+            'secretary' => 'RequestDetails.php',
+            'treasurer' => 'Borrow.php',
+            default => 'Request.php',
+        };
+        $detailParam = $role === 'treasurer' ? 'request_id' : 'id';
         ?>
 <div class="container">
 
@@ -74,6 +81,10 @@ if (!function_exists('renderNotificationPage')) {
                      data-category="<?= e($n['category'] ?? '') ?>"
                      data-unread="<?= !empty($n['unread']) ? 'true' : 'false' ?>"
                      data-id="<?= e($n['id'] ?? '') ?>"
+                     data-title="<?= e($n['title'] ?? '') ?>"
+                     data-message="<?= e($n['text'] ?? '') ?>"
+                     data-time="<?= e($n['time'] ?? '') ?>"
+                     data-request-url="<?= !empty($n['related_request_id']) ? e(rolePageUrl($role, $detailPage) . '?' . $detailParam . '=' . rawurlencode((string) $n['related_request_id'])) : '' ?>"
                      data-index="<?= (int) $index ?>">
                     <div class="icon-indicator bg-<?= e($n['tone'] ?? 'blue') ?>">!</div>
                     <div class="notif-content">
@@ -92,12 +103,28 @@ if (!function_exists('renderNotificationPage')) {
 
 </div>
 
+<dialog class="notification-details-modal" id="notificationDetailsModal" aria-labelledby="notificationDetailsTitle">
+    <div class="notification-details-content">
+        <button class="notification-details-close" type="button" aria-label="Close notification details">&times;</button>
+        <h2 id="notificationDetailsTitle"></h2>
+        <p class="notification-details-message" id="notificationDetailsMessage"></p>
+        <p class="notification-details-time" id="notificationDetailsTime"></p>
+        <a class="notification-details-link" id="notificationDetailsLink" href="" hidden>Go to request</a>
+    </div>
+</dialog>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const filterBtns = document.querySelectorAll('.filter-btn');
         const markAllReadBtn = document.getElementById('markAllReadBtn');
         const notificationItems = document.querySelectorAll('.notification-item');
         const noResults = document.getElementById('notifNoResults');
+        const detailsModal = document.getElementById('notificationDetailsModal');
+        const detailsTitle = document.getElementById('notificationDetailsTitle');
+        const detailsMessage = document.getElementById('notificationDetailsMessage');
+        const detailsTime = document.getElementById('notificationDetailsTime');
+        const detailsLink = document.getElementById('notificationDetailsLink');
+        const closeDetails = detailsModal.querySelector('.notification-details-close');
 
         let currentFilter = 'all';
 
@@ -153,12 +180,38 @@ if (!function_exists('renderNotificationPage')) {
         });
 
         notificationItems.forEach(function (item) {
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
             item.addEventListener('click', function () {
                 if (this.getAttribute('data-unread') === 'true') {
                     markRead(this);
                     applyFilter();
                 }
+                detailsTitle.textContent = this.dataset.title || '';
+                detailsMessage.textContent = this.dataset.message || '';
+                detailsTime.textContent = this.dataset.time || '';
+                if (this.dataset.requestUrl) {
+                    detailsLink.href = this.dataset.requestUrl;
+                    detailsLink.hidden = false;
+                } else {
+                    detailsLink.removeAttribute('href');
+                    detailsLink.hidden = true;
+                }
+                detailsModal.showModal();
             });
+            item.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    this.click();
+                }
+            });
+        });
+
+        closeDetails.addEventListener('click', function () {
+            detailsModal.close();
+        });
+        detailsModal.addEventListener('click', function (event) {
+            if (event.target === detailsModal) detailsModal.close();
         });
 
         /* Items already read earlier stay read after a reload. */

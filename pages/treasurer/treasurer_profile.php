@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/profile_api.php';
 
 /* Save requests from this page (fetch ?action=...) are answered here and exit */
@@ -47,7 +47,7 @@ renderHead('Profile', 'Profile.css', 'treasurer');
     <!-- ONE CONTAINER: banner + all page content -->
     <div class="one-card">
 
-    <?php renderPageHeader('Profile', 'Bodega & Procurement Portal • Barangay Gulod', 'treasurer'); ?>
+    <?php renderPageHeader('Profile', 'Storage Unit & Procurement Portal • Barangay Gulod', 'treasurer'); ?>
 
     <div class="profile-layout">
         <section class="profile-card">

@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/profile_api.php';
 
 /* Save requests from this page (fetch ?action=...) are answered here and exit */

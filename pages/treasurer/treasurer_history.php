@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/bodega.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -50,7 +50,7 @@ renderHead('History', 'History.css', 'treasurer');
 
     <form method="get" class="tr-toolbar tr-inline tr-wrap">
         <select class="tr-select" name="type">
-            <option value="" disabled hidden <?= $filterType === '' ? 'selected' : '' ?>>All movements</option>
+            <option value="" <?= $filterType === '' ? 'selected' : '' ?>>All movements</option>
             <?php foreach ($validTypes as $type): ?>
                 <option value="<?= e($type) ?>" <?= $filterType === $type ? 'selected' : '' ?>><?= e(ucfirst(str_replace('_', ' ', $type))) ?></option>
             <?php endforeach; ?>

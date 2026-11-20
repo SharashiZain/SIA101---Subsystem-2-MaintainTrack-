@@ -41,6 +41,10 @@
     siteRoot +
     "includes/notification_poll.php?role=" +
     encodeURIComponent(role || "");
+  var markReadEndpoint =
+    siteRoot +
+    "includes/notification_mark_read.php?role=" +
+    encodeURIComponent(role || "");
   var soundUrl = siteRoot + "assets/notif.mp3";
   var lastKey = "mt_notif_last_" + role;
   var muteKey = "mt_notif_muted_" + role;
@@ -212,12 +216,31 @@
   function markRead(ids) {
     if (!ids || !ids.length) return;
     var list = readIds();
+    var persistentIds = [];
     for (var i = 0; i < ids.length; i++) {
       var id = String(ids[i]);
       if (id && list.indexOf(id) === -1) list.push(id);
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        persistentIds.push(id);
+      }
     }
     store(readStoreKey, JSON.stringify(list.slice(-MAX_READ_IDS)));
     renderDots();
+    if (role && persistentIds.length) {
+      fetch(markReadEndpoint, {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: persistentIds }),
+      }).then(function (response) {
+        if (!response.ok) {
+          console.error("Could not save notification read state.");
+        }
+      }).catch(function (error) {
+        console.error("Could not save notification read state.", error);
+      });
+    }
   }
 
   function refreshDots() {
@@ -244,26 +267,52 @@
   function check() {
     if (!role || busy) return;
     busy = true;
-    fetch(endpoint, { credentials: "same-origin", cache: "no-store" })
+    var seen = load(lastKey);
+    var pollUrl = new URL(endpoint, location.href);
+    if (seen !== null) {
+      var seenValue = Number(seen);
+      var since =
+        /^\d+$/.test(seen) && Number.isFinite(seenValue)
+          ? new Date(seenValue).toISOString()
+          : seen;
+      pollUrl.searchParams.set("since", since);
+    }
+
+    fetch(pollUrl.toString(), { credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
         return r.ok ? r.json() : null;
       })
       .then(function (data) {
         if (!data || data.error) return;
-        var latest = data.latest_created_at
-          ? Date.parse(data.latest_created_at)
-          : 0;
-        var seen = load(lastKey);
+        var notifications = Array.isArray(data.notifications)
+          ? data.notifications
+          : data.latest_notification
+            ? [data.latest_notification]
+            : [];
+        var latestCreatedAt = data.latest_created_at || null;
+        if (!latestCreatedAt && notifications.length) {
+          latestCreatedAt = notifications[notifications.length - 1].created_at || null;
+        }
 
         if (seen === null) {
           // first visit: set a baseline, don't play for old notifications
-          store(lastKey, String(latest || 0));
+          store(lastKey, latestCreatedAt || "0");
           return;
         }
-        if (latest > Number(seen)) {
-          // something newer than we have already announced
-          store(lastKey, String(latest)); // update first so other open tabs don't also play it
+
+        if (notifications.length) {
+          // Update first so other open tabs don't also announce these notifications.
+          if (latestCreatedAt) store(lastKey, latestCreatedAt);
           play();
+          notifications.forEach(function (notification) {
+            var title = String(notification.title || "New notification").trim();
+            var message = String(notification.message || "").trim();
+            var toastMessage =
+              message && message !== title ? title + ": " + message : title;
+            if (global.AppToast && typeof global.AppToast.show === "function") {
+              global.AppToast.show(toastMessage, "success");
+            }
+          });
         }
       })
       .catch(function () {

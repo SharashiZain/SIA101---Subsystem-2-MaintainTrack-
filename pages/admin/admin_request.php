@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/PriorityScore.php';
 require_once __DIR__ . '/../../includes/DuplicateReport.php';
 
@@ -65,6 +65,14 @@ function requestPageStatusKey($status): string
     return preg_replace('/[^a-z0-9]+/', '-', $key) ?: 'pending';
 }
 
+function requestPageNormalizeCategory($category): string
+{
+    $value = trim((string) $category);
+    return strtolower(preg_replace('/[^a-z]/i', '', $value)) === 'nonelectrical'
+        ? 'Non-Electrical'
+        : $value;
+}
+
 $requests = [];
 $pageError = '';
 $formError = '';
@@ -120,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['check_duplicate'])) {
 /* New requests created by an Admin use the same fields, checks, auto priority and storage flow as the Regular User Report page. */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['admin_request_action'] ?? '') === 'create_request') {
     $concern = reportUppercase((string)($_POST['concern'] ?? ''));
-    $equipmentCategory = trim((string)($_POST['equipment_category'] ?? ''));
+    $equipmentCategory = requestPageNormalizeCategory($_POST['equipment_category'] ?? '');
     $facilityId = trim((string)($_POST['facility_id'] ?? ''));
     $floorId = trim((string)($_POST['floor_id'] ?? ''));
     $roomId = trim((string)($_POST['room_id'] ?? ''));
@@ -128,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['admin_request_action'] ?? 
     $description = reportUppercase((string)($_POST['description'] ?? ''));
     $date = trim((string)($_POST['date_reported'] ?? date('Y-m-d')));
 
-    if ($concern === '' || !in_array($equipmentCategory, ['Electrical','Non Electrical'], true) || !$facilityId || !$floorId || !$roomId || $description === '' || $date === '') {
+    if ($concern === '' || !in_array($equipmentCategory, ['Electrical','Non-Electrical'], true) || !$facilityId || !$floorId || !$roomId || $description === '' || $date === '') {
         $formError = 'Please complete all required fields.';
     }
 
@@ -160,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['admin_request_action'] ?? 
         }
         if (!$facility || !$floor || !$room || ($equipmentId !== '' && !$selectedEquipment)) {
             $formError = 'The selected Facility, Floor, Room, or Equipment does not match the Registry. Please select again.';
-        } elseif ($equipmentId !== '' && ($selectedEquipment['category'] ?? '') !== $equipmentCategory) {
+        } elseif ($equipmentId !== '' && requestPageNormalizeCategory($selectedEquipment['category'] ?? '') !== $equipmentCategory) {
             $formError = 'The selected equipment does not match the chosen category.';
         }
     }
@@ -200,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['admin_request_action'] ?? 
     }
 
     if ($formError === '') {
-        // Keep the existing request_category enum; the exact Electrical/Non Electrical choice is stored separately.
+        // Keep the existing request_category enum; the exact equipment category is stored separately.
         $requestCategory = $equipmentCategory === 'Electrical' ? 'Electrical' : 'Equipment';
         $saved = null;
 
@@ -266,9 +274,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['admin_request_act
     } elseif ($action === 'update_request') {
         $concern = trim((string)($_POST['edit_concern'] ?? ''));
         $description = trim((string)($_POST['edit_description'] ?? ''));
-        $category = trim((string)($_POST['edit_category'] ?? ''));
+        $category = requestPageNormalizeCategory($_POST['edit_category'] ?? '');
         $priority = trim((string)($_POST['edit_priority'] ?? ''));
         $status = trim((string)($_POST['edit_status'] ?? ''));
+        $rejectionReason = trim((string)($_POST['edit_rejection_reason'] ?? ''));
         $facilityId = trim((string)($_POST['edit_facility_id'] ?? ''));
         $floorId = trim((string)($_POST['edit_floor_id'] ?? ''));
         $roomId = trim((string)($_POST['edit_room_id'] ?? ''));
@@ -276,15 +285,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['admin_request_act
         $reportedBy = trim((string)($_POST['edit_reported_by'] ?? ''));
         $assignedTo = trim((string)($_POST['edit_assigned_to'] ?? ''));
         $dateReported = trim((string)($_POST['edit_date_reported'] ?? ''));
-        $allowedCategories = ['Electrical','Equipment','Non Electrical','Non-Electrical'];
+        $allowedCategories = ['Electrical','Equipment','Non-Electrical'];
         $allowedPriorities = ['Low','Medium','High','Urgent'];
         $allowedStatuses = ['Pending','Assigned','In Progress','Completed','Cancelled','Rejected'];
         $dateValue = DateTime::createFromFormat('!Y-m-d', $dateReported, new DateTimeZone('Asia/Manila'));
         $validDate = $dateValue && $dateValue->format('Y-m-d') === $dateReported && $dateReported <= date('Y-m-d');
-        if ($concern === '' || $description === '' || !in_array($category, $allowedCategories, true) || !in_array($priority, $allowedPriorities, true) || !in_array($status, $allowedStatuses, true) || !$facilityId || !$floorId || !$roomId || !$equipmentId || !$reportedBy || !$validDate) {
+        if ($concern === '' || $description === '' || !in_array($category, $allowedCategories, true) || !in_array($priority, $allowedPriorities, true) || !in_array($status, $allowedStatuses, true) || ($status === 'Rejected' && $rejectionReason === '') || !$facilityId || !$floorId || !$roomId || !$equipmentId || !$reportedBy || !$validDate) {
             $_SESSION['admin_request_success'] = 'Update failed: please complete all editable request details with valid values.';
         } else {
             $payload = ['concern'=>$concern,'description'=>$description,'category'=>$category,'priority'=>$priority,'status'=>$status,'facility_id'=>$facilityId,'floor_id'=>$floorId,'room_id'=>$roomId,'equipment_id'=>$equipmentId,'reported_by'=>$reportedBy,'assigned_to'=>($assignedTo !== '' ? $assignedTo : null),'date_reported'=>$dateValue->format('Y-m-d\T00:00:00+08:00')];
+            if ($status === 'Rejected') $payload['rejection_reason'] = $rejectionReason;
             $payload['specific_area'] = null;
             $roomCheck = requestPageSupabase('GET', 'facility_rooms?select=name&room_id=eq.'.rawurlencode($roomId).'&limit=1');
             if (!empty($roomCheck['data'][0]['name'])) $payload['specific_area'] = $roomCheck['data'][0]['name'];
@@ -307,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['admin_request_act
 /* Load lookup tables first so the request list can show readable names. */
 $requestsResult = requestPageSupabase(
     'GET',
-    'maintenance_requests?select=request_id,display_id,concern,description,category,status,priority,facility_id,floor_id,room_id,equipment_id,reported_by,assigned_to,image_path,date_reported,created_at&order=date_reported.desc.nullslast,created_at.desc'
+    'maintenance_requests?select=request_id,display_id,concern,description,category,status,priority,rejection_reason,facility_id,floor_id,room_id,equipment_id,reported_by,assigned_to,image_path,date_reported,created_at&order=date_reported.desc.nullslast,created_at.desc'
 );
 $facilitiesResult = requestPageSupabase('GET', 'facilities?select=facility_id,name');
 $floorsResult = requestPageSupabase('GET', 'facility_floors?select=floor_id,facility_id,name,code');
@@ -377,9 +387,10 @@ if (!$pageError) {
             'description' => $row['description'] ?? '',
             'equipment' => $equipmentName,
             'location' => $parts ? implode(' · ', $parts) : '—',
-            'category' => $row['category'] ?? '—',
+            'category' => requestPageNormalizeCategory($row['category'] ?? '—'),
             'priority' => $row['priority'] ?? '—',
             'status' => $status,
+            'rejectionReason' => $row['rejection_reason'] ?? '',
             'statusKey' => requestPageStatusKey($status),
             'assignedTo' => !empty($row['assigned_to']) ? ($userMap[$row['assigned_to']]['name'] ?? 'Assigned personnel') : 'Unassigned',
             'requester' => $requester['name'],
@@ -409,7 +420,7 @@ renderHead('Maintenance Requests', 'Request.css');
             <input type="text" placeholder="Search ID, issue, equipment" id="requestSearch">
 
             <select id="requestStatusFilter">
-                <option value="" disabled hidden selected>All Statuses</option>
+                <option value="" selected>All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="assigned">Assigned</option>
                 <option value="in-progress">In Progress</option>
@@ -418,13 +429,13 @@ renderHead('Maintenance Requests', 'Request.css');
             </select>
 
             <select id="requestCategoryFilter">
-                <option value="" disabled hidden selected>All Categories</option>
+                <option value="" selected>All Categories</option>
                 <?php
-                $categories = [];
-                foreach ($requests as $request) {
-                    if ($request['category'] !== '—') $categories[$request['category']] = true;
-                }
-                foreach (array_keys($categories) as $category):
+                $categories = array_values(array_unique(array_map(
+                    'requestPageNormalizeCategory',
+                    array_filter(array_column($requests, 'category'), static fn($category) => $category !== '—')
+                )));
+                foreach ($categories as $category):
                 ?>
                     <option value="<?= requestPageText($category) ?>"><?= requestPageText($category) ?></option>
                 <?php endforeach; ?>
@@ -455,7 +466,7 @@ renderHead('Maintenance Requests', 'Request.css');
                             data-category="<?= requestPageText($r['category']) ?>"
                             data-location="<?= requestPageText($r['location']) ?>"
                             data-search="<?= requestPageText($r['id'] . ' ' . $r['issue'] . ' ' . $r['description'] . ' ' . $r['equipment'] . ' ' . $r['location'] . ' ' . $r['category'] . ' ' . $r['requester'] . ' ' . $r['username'] . ' ' . $r['assignedTo']) ?>"
-                            data-request="<?= requestPageText(json_encode(['requestId'=>$r['requestId'],'id'=>$r['id'],'issue'=>$r['issue'],'description'=>$r['description'],'equipment'=>$r['equipment'],'location'=>$r['location'],'category'=>$r['category'],'priority'=>$r['priority'],'status'=>$r['status'],'assignedTo'=>$r['assignedTo'],'requester'=>$r['requester'],'username'=>$r['username'],'date'=>$r['date'],'facilityId'=>$r['facilityId'],'floorId'=>$r['floorId'],'roomId'=>$r['roomId'],'equipmentId'=>$r['equipmentId'],'reportedById'=>$r['reportedById'],'assignedToId'=>$r['assignedToId'],'dateRaw'=>$r['dateRaw']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?>"
+                            data-request="<?= requestPageText(json_encode(['requestId'=>$r['requestId'],'id'=>$r['id'],'issue'=>$r['issue'],'description'=>$r['description'],'equipment'=>$r['equipment'],'location'=>$r['location'],'category'=>$r['category'],'priority'=>$r['priority'],'status'=>$r['status'],'rejectionReason'=>$r['rejectionReason'],'assignedTo'=>$r['assignedTo'],'requester'=>$r['requester'],'username'=>$r['username'],'date'=>$r['date'],'facilityId'=>$r['facilityId'],'floorId'=>$r['floorId'],'roomId'=>$r['roomId'],'equipmentId'=>$r['equipmentId'],'reportedById'=>$r['reportedById'],'assignedToId'=>$r['assignedToId'],'dateRaw'=>$r['dateRaw']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?>"
                             style="cursor:pointer;"
                         >
                             <td><?= requestPageText($r['id']) ?></td>
@@ -529,8 +540,9 @@ renderHead('Maintenance Requests', 'Request.css');
       <div class="request-form-grid">
         <div class="request-form-field"><label for="editConcern">Concern *</label><input id="editConcern" name="edit_concern" maxlength="200" required></div>
         <div class="request-form-field"><label for="editStatus">Status *</label><select id="editStatus" name="edit_status" required><option>Pending</option><option>Assigned</option><option>In Progress</option><option>Completed</option><option>Cancelled</option><option>Rejected</option></select></div>
+        <div class="request-form-field request-description-field" id="editRejectionReasonField" hidden><label for="editRejectionReason">Rejection Reason *</label><textarea id="editRejectionReason" name="edit_rejection_reason" rows="2" maxlength="1000"></textarea></div>
         <div class="request-form-field"><label for="editPriority">Priority *</label><select id="editPriority" name="edit_priority" required><option>Low</option><option>Medium</option><option>High</option><option>Urgent</option></select></div>
-        <div class="request-form-field"><label for="editCategory">Category *</label><select id="editCategory" name="edit_category" required><option value="Electrical">Electrical</option><option value="Equipment">Equipment</option><option value="Non Electrical">Non Electrical</option><option value="Non-Electrical">Non-Electrical</option></select></div>
+        <div class="request-form-field"><label for="editCategory">Category *</label><select id="editCategory" name="edit_category" required><option value="Electrical">Electrical</option><option value="Equipment">Equipment</option><option value="Non-Electrical">Non-Electrical</option></select></div>
         <div class="request-form-field"><label for="editFacility">Facility *</label><select id="editFacility" name="edit_facility_id" required><option value="" disabled hidden selected>Select facility</option><?php foreach (($facilitiesResult['data']??[]) as $f): ?><option value="<?=requestPageText($f['facility_id']??'')?>"><?=requestPageText($f['name']??'')?></option><?php endforeach; ?></select></div>
         <div class="request-form-field"><label for="editFloor">Floor *</label><select id="editFloor" name="edit_floor_id" required><option value="" disabled hidden selected>Select floor</option><?php foreach (($floorsResult['data']??[]) as $f): ?><option value="<?=requestPageText($f['floor_id']??'')?>" data-facility="<?=requestPageText($f['facility_id']??'')?>"><?=requestPageText($f['name']??$f['code']??'')?></option><?php endforeach; ?></select></div>
         <div class="request-form-field"><label for="editRoom">Room *</label><select id="editRoom" name="edit_room_id" required><option value="" disabled hidden selected>Select room</option><?php foreach (($roomsResult['data']??[]) as $r): ?><option value="<?=requestPageText($r['room_id']??'')?>" data-floor="<?=requestPageText($r['floor_id']??'')?>"><?=requestPageText($r['name']??$r['code']??'')?></option><?php endforeach; ?></select></div>
@@ -612,7 +624,7 @@ renderHead('Maintenance Requests', 'Request.css');
           <select id="equipment_category" name="equipment_category" required>
             <option value="" disabled hidden style="display:none" <?=($_POST['equipment_category']??'')===''?'selected':''?>>Select category</option>
             <option value="Electrical" <?=($_POST['equipment_category']??'')==='Electrical'?'selected':''?>>Electrical</option>
-            <option value="Non Electrical" <?=($_POST['equipment_category']??'')==='Non Electrical'?'selected':''?>>Non Electrical</option>
+            <option value="Non-Electrical" <?=requestPageNormalizeCategory($_POST['equipment_category']??'')==='Non-Electrical'?'selected':''?>>Non-Electrical</option>
           </select>
         </div>
       </div>
@@ -873,6 +885,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const editFloor = document.getElementById('editFloor');
     const editRoom = document.getElementById('editRoom');
     const editEquipment = document.getElementById('editEquipment');
+    const editStatus = document.getElementById('editStatus');
+    const editRejectionReasonField = document.getElementById('editRejectionReasonField');
+    const editRejectionReason = document.getElementById('editRejectionReason');
+    function updateRejectionReasonField() {
+        const rejected = editStatus.value === 'Rejected';
+        editRejectionReasonField.hidden = !rejected;
+        editRejectionReason.required = rejected;
+    }
+    editStatus.addEventListener('change', updateRejectionReasonField);
     function filterEditLocations(resetChildren) {
         const facility = editFacility.value, floor = editFloor.value, room = editRoom.value;
         Array.from(editFloor.options).forEach(o => { if (o.value) o.hidden = !!facility && o.dataset.facility !== facility; });
@@ -895,11 +916,13 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('editConcern').value = activeRequest.issue || '';
         document.getElementById('editDescription').value = activeRequest.description || '';
         document.getElementById('editDateReported').value = activeRequest.dateRaw || '';
+        editRejectionReason.value = activeRequest.rejectionReason || '';
         const valueMap = {editCategory:activeRequest.category, editPriority:activeRequest.priority, editStatus:activeRequest.status, editFacility:activeRequest.facilityId, editFloor:activeRequest.floorId, editRoom:activeRequest.roomId, editEquipment:activeRequest.equipmentId, editReportedBy:activeRequest.reportedById};
         Object.keys(valueMap).forEach(function (id) {
             const el = document.getElementById(id), value = valueMap[id];
             if (el && value && Array.from(el.options).some(option => option.value === value)) el.value = value;
         });
+        updateRejectionReasonField();
         const assignedSelect = document.getElementById('editAssignedTo');
         const assignedId = String(activeRequest.assignedToId || '');
         if (assignedSelect) {
@@ -924,6 +947,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!activeRequest || !activeRequest.requestId) { alert('Missing request ID.'); return; }
         if (confirm('Delete maintenance request ' + (activeRequest.id || '') + '? This action cannot be undone.')) {
             document.getElementById('deleteRequestId').value = activeRequest.requestId;
+            window.AppToast.queue('Request deleted successfully.');
             document.getElementById('deleteRequestForm').submit();
         }
     });
@@ -1265,6 +1289,7 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.dupChecked = '1';
             button.disabled = true; button.textContent = 'Submitting...';
             document.getElementById('loadingOverlay').hidden = false;
+            window.AppToast.queue('Request submitted successfully.');
             form.submit();
         }
         fetch(window.location.pathname + '?check_duplicate=1', { method: 'POST', body: fd, credentials: 'same-origin' })
@@ -1313,4 +1338,3 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <?php renderFoot(); ?>
 <script src="<?= e(appAssetUrl('assets/js/LoadingOverlay.js')) ?>"></script>
-  <script src="<?= $siteRoot ?? '' ?>../assets/js/NotificationSound.js"></script>

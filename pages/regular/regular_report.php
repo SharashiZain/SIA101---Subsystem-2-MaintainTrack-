@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/PriorityScore.php';
 require_once __DIR__ . '/../../includes/DuplicateReport.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -23,6 +23,19 @@ function maintenanceRequest(string $method, string $endpoint, ?array $payload = 
 }
 function mrEscape($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function mrGet(string $endpoint): array { $r=maintenanceRequest('GET',$endpoint); return ($r['success'] && is_array($r['data'])) ? $r['data'] : []; }
+function reportNormalizeCategory($category): string {
+    $value = trim((string) $category);
+    return strtolower(preg_replace('/[^a-z]/i', '', $value)) === 'nonelectrical' ? 'Non-Electrical' : $value;
+}
+function reportFloorChoice($value): string {
+    $text = strtolower(trim((string) $value));
+    $text = preg_replace('/[^a-z0-9]+/i', ' ', $text) ?? '';
+    if (preg_match('/\bground\b|\bground floor\b|\bgf\b/', $text)) return 'ground';
+    if (preg_match('/\b(?:2nd|second|2)\s*(?:floor|f)?\b/', $text)) return '2nd';
+    if (preg_match('/\b(?:3rd|third|3)\s*(?:floor|f)?\b/', $text)) return '3rd';
+    if (preg_match('/\b(?:4th|fourth|4)\s*(?:floor|f)?\b/', $text)) return '4th';
+    return '';
+}
 function mrUpload(string $path, string $tmp, string $mime): array {
     $url=rtrim(SUPABASE_URL,'/').'/storage/v1/object/report-images/'.implode('/',array_map('rawurlencode',explode('/',$path)));
     $bytes=file_get_contents($tmp); if ($bytes===false) return ['success'=>false,'error'=>'Unable to read uploaded image.'];
@@ -43,6 +56,8 @@ function mrDeleteUpload(string $path): bool {
 
 $error=''; $success=$_SESSION['maintenance_request_success']??''; unset($_SESSION['maintenance_request_success']);
 $facilities=mrGet('facilities?select=facility_id,name,code&order=name.asc');
+$externalFacilities=mrGet('external_asset_snapshots?select=external_asset_id,external_asset_tag,payload&external_system=eq.LifeCycleTrack&entity_type=eq.facility&deleted_at=is.null&order=external_asset_tag.asc');
+$externalEquipment=mrGet('external_asset_snapshots?select=external_asset_id,external_asset_tag,payload,deleted_at&external_system=eq.LifeCycleTrack&entity_type=eq.equipment&deleted_at=is.null&order=external_asset_tag.asc');
 $floors=mrGet('facility_floors?select=floor_id,facility_id,name,code&order=name.asc');
 $rooms=mrGet('facility_rooms?select=room_id,floor_id,name,code&order=name.asc');
 $equipment=mrGet('equipment?select=equipment_id,display_id,name,type,category,facility_id,floor_id,room_id,status&status=eq.Active&order=name.asc');
@@ -57,15 +72,25 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_GET['check_duplicate'])) {
 
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     $concern=reportUppercase((string)($_POST['concern']??''));
-    $equipmentCategory=trim((string)($_POST['equipment_category']??''));
-    $facilityId=trim((string)($_POST['facility_id']??''));
+    $equipmentCategory=reportNormalizeCategory($_POST['equipment_category']??'');
+    $facilitySelection=trim((string)($_POST['facility_id']??''));
+    $isExternalFacility=str_starts_with($facilitySelection,'external:');
+    $externalFacilityId=$isExternalFacility?substr($facilitySelection,9):'';
+    $facilityId=$isExternalFacility?'':$facilitySelection;
+    $mappedFacilityId='';
     $floorId=trim((string)($_POST['floor_id']??''));
+    $floorChoice=trim((string)($_POST['floor_choice']??''));
     $roomId=trim((string)($_POST['room_id']??''));
-    $equipmentId=trim((string)($_POST['equipment_id']??''));
+    $equipmentSelection=trim((string)($_POST['equipment_id']??''));
+    $isExternalEquipment=str_starts_with($equipmentSelection,'external:');
+    $externalEquipmentId=$isExternalEquipment?substr($equipmentSelection,9):'';
+    $equipmentId=$isExternalEquipment?'':$equipmentSelection;
     $description=reportUppercase((string)($_POST['description']??''));
     $date=trim((string)($_POST['date_reported']??date('Y-m-d')));
 
-    if ($concern==='' || !in_array($equipmentCategory,['Electrical','Non Electrical'],true) || !$facilityId || !$floorId || !$roomId || $description==='' || $date==='') $error='Please complete all required fields.';
+    if ($concern==='' || !in_array($equipmentCategory,['Electrical','Non-Electrical'],true) || $facilitySelection==='' || !in_array($floorChoice,['ground','2nd','3rd','4th'],true) || (!$isExternalFacility && !$floorId) || $description==='' || $date==='') $error='Please complete all required fields.';
+    if ($equipmentCategory!=='Electrical' && ($equipmentId!=='' || $isExternalEquipment)) $error='Equipment can only be selected for an Electrical concern.';
+    if ($isExternalEquipment && !$isExternalFacility) $error='LifeCycleTrack equipment must be selected with its LifeCycleTrack facility.';
 
     $currentUsername=(string)($_SESSION['username']??$_SESSION['user']??''); $currentUser=null;
     if ($error==='' && $currentUsername==='') $error='Your session has expired. Please log in again.';
@@ -79,21 +104,46 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         }
     }
 
-    $facility=$floor=$room=$selectedEquipment=null;
-    if ($error==='') {
+    $facility=$floor=$room=$selectedEquipment=$selectedExternalEquipment=null;
+    $externalEquipmentName=null;
+    if ($error==='' && $isExternalFacility) {
+        $r=maintenanceRequest('GET','external_asset_snapshots?select=external_asset_id,payload&external_system=eq.LifeCycleTrack&entity_type=eq.facility&external_asset_id=eq.'.rawurlencode($externalFacilityId).'&deleted_at=is.null&limit=1');
+        $externalFacility=$r['data'][0]??null;
+        $externalPayload=is_array($externalFacility['payload']??null)?$externalFacility['payload']:[];
+        $externalFacilityName=trim((string)($externalPayload['name']??''));
+        if (!$externalFacility || $externalFacilityName==='' || reportFloorChoice($externalPayload['location']??'')!==$floorChoice) $error='The selected LifeCycleTrack facility reference is no longer available on that floor. Refresh and select it again.';
+        else $facility=['name'=>$externalFacilityName];
+        if ($error==='' && ($floorId!=='' || $roomId!=='')) $error='LifeCycleTrack locations are matched at facility level; refresh and select the facility again.';
+        if ($error==='' && $isExternalEquipment) {
+            $r=maintenanceRequest('GET','external_asset_snapshots?select=external_asset_id,external_asset_tag,payload,deleted_at&external_system=eq.LifeCycleTrack&entity_type=eq.equipment&external_asset_id=eq.'.rawurlencode($externalEquipmentId).'&deleted_at=is.null&limit=1');
+            $selectedExternalEquipment=$r['data'][0]??null;
+            $externalEquipmentPayload=is_array($selectedExternalEquipment['payload']??null)?$selectedExternalEquipment['payload']:[];
+            if (!$selectedExternalEquipment || (string)($externalEquipmentPayload['facility_id']??'')!==$externalFacilityId
+                || strtolower((string)($externalEquipmentPayload['lifecycle_status']??''))==='disposed'
+                || !empty($externalEquipmentPayload['disposed_at'])) {
+                $error='The selected LifeCycleTrack equipment is no longer available at this facility. Refresh and select it again.';
+            } else {
+                $externalEquipmentName=trim((string)($externalEquipmentPayload['name']??''));
+                if ($externalEquipmentName==='') $error='The selected LifeCycleTrack equipment has no valid name.';
+            }
+        }
+    } elseif ($error==='') {
         $r=maintenanceRequest('GET','facilities?select=facility_id,name&facility_id=eq.'.rawurlencode($facilityId).'&limit=1');
         $facility=$r['data'][0]??null;
-        $r=maintenanceRequest('GET','facility_floors?select=floor_id,facility_id,name&floor_id=eq.'.rawurlencode($floorId).'&facility_id=eq.'.rawurlencode($facilityId).'&limit=1');
+        $r=maintenanceRequest('GET','facility_floors?select=floor_id,facility_id,name,code&floor_id=eq.'.rawurlencode($floorId).'&facility_id=eq.'.rawurlencode($facilityId).'&limit=1');
         $floor=$r['data'][0]??null;
-        $r=maintenanceRequest('GET','facility_rooms?select=room_id,floor_id,name&room_id=eq.'.rawurlencode($roomId).'&floor_id=eq.'.rawurlencode($floorId).'&limit=1');
-        $room=$r['data'][0]??null;
-        // Equipment is optional: it is only checked against the Registry when the user picked one.
+        if ($roomId!=='') {
+            $r=maintenanceRequest('GET','facility_rooms?select=room_id,floor_id,name&room_id=eq.'.rawurlencode($roomId).'&floor_id=eq.'.rawurlencode($floorId).'&limit=1');
+            $room=$r['data'][0]??null;
+        }
+        if ($floor && reportFloorChoice(($floor['name']??'').' '.($floor['code']??''))!==$floorChoice) $floor=null;
+        $mappedFacilityId=$facilityId;
         if ($equipmentId!=='') {
-            $r=maintenanceRequest('GET','equipment?select=equipment_id,display_id,name,type,category,facility_id,floor_id,room_id,status&equipment_id=eq.'.rawurlencode($equipmentId).'&facility_id=eq.'.rawurlencode($facilityId).'&floor_id=eq.'.rawurlencode($floorId).'&room_id=eq.'.rawurlencode($roomId).'&status=eq.Active&limit=1');
+            $roomFilter=$roomId!==''?'room_id=eq.'.rawurlencode($roomId):'room_id=is.null';
+            $r=maintenanceRequest('GET','equipment?select=equipment_id,display_id,name,type,category,facility_id,floor_id,room_id,status&equipment_id=eq.'.rawurlencode($equipmentId).'&facility_id=eq.'.rawurlencode($facilityId).'&floor_id=eq.'.rawurlencode($floorId).'&'.$roomFilter.'&status=eq.Active&limit=1');
             $selectedEquipment=$r['data'][0]??null;
         }
-        if (!$facility || !$floor || !$room || ($equipmentId!=='' && !$selectedEquipment)) $error='The selected Facility, Floor, Room, or Equipment does not match the Registry. Please select again.';
-        elseif ($equipmentId!=='' && ($selectedEquipment['category']??'')!==$equipmentCategory) $error='The selected equipment does not match the chosen category.';
+        if (!$facility || !$floor || ($roomId!=='' && !$room) || ($equipmentId!=='' && !$selectedEquipment)) $error='The selected Facility / Room, Floor, or Equipment does not match the Registry. Please select again.';
     }
 
     $dateTimestamp=null;
@@ -131,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     }
 
     if ($error==='') {
-        // Preserve the existing request_category enum while storing the user's exact Electrical/Non Electrical selection separately.
+        // Preserve the existing request_category enum while storing the user's exact equipment category separately.
         $requestCategory=$equipmentCategory==='Electrical'?'Electrical':'Equipment';
         $saved=null;
 
@@ -165,8 +215,13 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             $payload=[
                 'display_id'=>$displayId, 'concern'=>$concern, 'description'=>$description,
                 'category'=>$requestCategory, 'equipment_category'=>$equipmentCategory,
-                'priority'=>$autoPriority, 'status'=>'Pending', 'facility_id'=>$facilityId,
-                'floor_id'=>$floorId, 'room_id'=>$roomId, 'specific_area'=>$room['name']??null,
+                'priority'=>$autoPriority, 'status'=>'Pending', 'facility_id'=>$facilityId!==''?$facilityId:null,
+                'external_facility_id'=>$isExternalFacility?$externalFacilityId:null,
+                'external_facility_name'=>$isExternalFacility?($facility['name']??null):null,
+                'external_equipment_id'=>$isExternalEquipment?$externalEquipmentId:null,
+                'external_equipment_name'=>$isExternalEquipment?($externalEquipmentName??null):null,
+                'floor_id'=>$floorId!==''?$floorId:null, 'room_id'=>$roomId!==''?$roomId:null,
+                'specific_area'=>$room['name']??($floor['name']??($facility['name']??null)),
                 'equipment_id'=>$equipmentId!==''?$equipmentId:null, 'reported_by'=>$currentUser['user_id'],
                 'image_path'=>$imagePath, 'date_reported'=>$dateTimestamp
             ];
@@ -197,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MaintainTrack | Maintenance Request</title>
     <link rel="stylesheet" href="<?= e(appAssetUrl('assets/css/base.css')) ?>">
+    <link rel="stylesheet" href="<?= e(appAssetUrl('assets/css/ToastNotifications.css')) ?>">
     <link rel="stylesheet" href="<?= e(appAssetUrl('assets/css/regular/regular_Report.css')) ?>">
     <style>
         /* Keep the original Report UI and make the upload area clickable. */
@@ -249,6 +305,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         .select-wrap.locked .select-guard { display:block; }
         .form-group select:disabled { background-color:#f1f5f9 !important; color:#94a3b8; opacity:1; }
         .form-group.is-locked label { color:#94a3b8; }
+        #equipment_group[hidden] { display:none !important; }
         /* Full-screen loading overlay: blurs the whole page while the request is being submitted. */
         .loading-overlay { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:rgba(15,23,42,.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
         .loading-overlay[hidden] { display:none !important; }
@@ -300,8 +357,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 
         <?php if ($error !== ''): ?><div class="inline-message error" id="serverErrorFallback"><?=mrEscape($error)?></div><?php endif; ?>
     <?php if ($success !== ''): ?><div class="inline-message success" id="serverSuccessFallback"><?=mrEscape($success)?></div><?php endif; ?>
-    <?php if (!$facilities || !$floors || !$rooms || !$equipment): ?>
-        <div class="inline-message error">Some Registry dropdown data could not be loaded. Please check the facilities, facility_floors, facility_rooms, and equipment tables.</div>
+    <?php if (!$facilities && !$externalFacilities): ?>
+        <div class="inline-message error">No facilities are registered yet. Add a MaintainTrack facility or wait for a LifeCycleTrack facility reference to sync.</div>
+    <?php elseif (!$facilities && $externalFacilities): ?>
+        <div class="inline-message">The facility choices below are read-only LifeCycleTrack references. Floors, rooms, and equipment are optional for these requests.</div>
     <?php endif; ?>
 
 
@@ -321,7 +380,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
                 <select id="equipment_category" name="equipment_category" required>
                     <option value="" disabled hidden style="display:none" <?=($_POST['equipment_category']??'')===''?'selected':''?>>Select category</option>
                     <option value="Electrical" <?=($_POST['equipment_category']??'')==='Electrical'?'selected':''?>>Electrical</option>
-                    <option value="Non Electrical" <?=($_POST['equipment_category']??'')==='Non Electrical'?'selected':''?>>Non Electrical</option>
+                    <option value="Non-Electrical" <?=reportNormalizeCategory($_POST['equipment_category']??'')==='Non-Electrical'?'selected':''?>>Non-Electrical</option>
                 </select>
             </div>
         </div>
@@ -335,27 +394,27 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 
         <div class="form-row">
             <div class="form-group">
-                <label for="facility_id">Facility <span>*</span></label>
-                <select id="facility_id" name="facility_id" required>
-                    <option value="" disabled hidden style="display:none" <?=($_POST['facility_id']??'')===''?'selected':''?>>Select facility</option>
-                    <?php foreach ($facilities as $f): ?>
-                        <option value="<?=mrEscape($f['facility_id'])?>" <?=($_POST['facility_id']??'')===($f['facility_id']??'')?'selected':''?>><?=mrEscape($f['name'])?></option>
-                    <?php endforeach; ?>
+                <label for="floor_choice">Floor <span>*</span></label>
+                <select id="floor_choice" name="floor_choice" required>
+                    <option value="" disabled hidden style="display:none" <?=($_POST['floor_choice']??'')===''?'selected':''?>>Select floor</option>
+                    <option value="ground" <?=($_POST['floor_choice']??'')==='ground'?'selected':''?>>Ground Floor</option>
+                    <option value="2nd" <?=($_POST['floor_choice']??'')==='2nd'?'selected':''?>>2nd Floor</option>
+                    <option value="3rd" <?=($_POST['floor_choice']??'')==='3rd'?'selected':''?>>3rd Floor</option>
+                    <option value="4th" <?=($_POST['floor_choice']??'')==='4th'?'selected':''?>>4th Floor</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="floor_id">Floor <span>*</span></label>
-                <div class="select-wrap"><select id="floor_id" name="floor_id" required><option value="" disabled selected hidden style="display:none">Select floor</option></select><div class="select-guard"></div></div>
+                <label for="location_selection">Facility / Room <span>*</span></label>
+                <div class="select-wrap"><select id="location_selection" required><option value="" disabled selected hidden style="display:none">Select a floor first</option></select><div class="select-guard"></div></div>
+                <input type="hidden" id="facility_id" name="facility_id" value="<?=mrEscape($_POST['facility_id']??'')?>">
+                <input type="hidden" id="mapped_facility_id" value="">
+                <input type="hidden" id="floor_id" name="floor_id" value="<?=mrEscape($_POST['floor_id']??'')?>">
+                <input type="hidden" id="room_id" name="room_id" value="<?=mrEscape($_POST['room_id']??'')?>">
             </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="room_id">Room <span>*</span></label>
-                <div class="select-wrap"><select id="room_id" name="room_id" required><option value="" disabled selected hidden style="display:none">Select room</option></select><div class="select-guard"></div></div>
-            </div>
-            <div class="form-group">
+            <div class="form-group" id="equipment_group" <?=($_POST['equipment_category']??'')==='Electrical'?'':'hidden'?>>
                 <label for="equipment_id">Equipment <span style="font-weight:400;">(optional)</span></label>
                 <div class="select-wrap"><select id="equipment_id" name="equipment_id"><option value="" disabled selected hidden style="display:none">Select equipment (optional)</option></select><div class="select-guard"></div></div>
+                <small class="form-hint" id="equipment_hint">Equipment is optional for Electrical concerns.</small>
             </div>
         </div>
         <div class="form-row">
@@ -438,25 +497,28 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const mrFacilities = <?=json_encode($facilities,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const mrFloors = <?=json_encode($floors,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const mrRooms = <?=json_encode($rooms,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const mrEquipment = <?=json_encode($equipment,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
-    const oldFloor = <?=json_encode((string)($_POST['floor_id']??''))?>;
-    const oldRoom = <?=json_encode((string)($_POST['room_id']??''))?>;
+    const mrExternalFacilities = <?=json_encode($externalFacilities,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
+    const mrExternalEquipment = <?=json_encode($externalEquipment,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
+    const oldLocation = <?=json_encode(str_starts_with((string)($_POST['facility_id']??''),'external:') ? ['external',substr((string)$_POST['facility_id'],9)] : ['local',(string)($_POST['facility_id']??''),(string)($_POST['floor_id']??''),(string)($_POST['room_id']??'')],JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const oldEquipment = <?=json_encode((string)($_POST['equipment_id']??''))?>;
 
     const category = document.getElementById('equipment_category');
     const facility = document.getElementById('facility_id');
+    const mappedFacility = document.getElementById('mapped_facility_id');
     const floor = document.getElementById('floor_id');
     const room = document.getElementById('room_id');
+    const floorChoice = document.getElementById('floor_choice');
+    const locationSelection = document.getElementById('location_selection');
+    const equipmentGroup = document.getElementById('equipment_group');
     const equipment = document.getElementById('equipment_id');
 
-    // Dependent dropdowns stay locked until every field they depend on has a value.
-    // "needs" is listed top-to-bottom, so a click on a locked dropdown goes to the first missing field.
     const lockDefs = [
-        { select: floor,     needs: [facility] },
-        { select: room,      needs: [facility, floor] },
-        { select: equipment, needs: [category, facility, floor, room] }
+        { select: locationSelection, needs: [floorChoice] },
+        { select: equipment, needs: [category, floorChoice, locationSelection] }
     ];
     lockDefs.forEach(d => {
         d.group = d.select.closest('.form-group');
@@ -466,8 +528,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     function firstMissing(d) { return d.needs.find(el => !el.value) || null; }
     function syncLocks() {
+        const electrical = category.value === 'Electrical';
+        equipmentGroup.hidden = !electrical;
         lockDefs.forEach(d => {
-            const locked = !!firstMissing(d);
+            const locked = !!firstMissing(d)
+                || (d.select === locationSelection && locationSelection.dataset.hasOptions === 'false')
+                || (d.select === equipment && !electrical);
             d.select.disabled = locked;
             d.group.classList.toggle('is-locked', locked);
             d.wrap.classList.toggle('locked', locked);
@@ -498,57 +564,156 @@ document.addEventListener('DOMContentLoaded', function () {
         d.label.addEventListener('click', onLockedClick);
     });
 
-    // The placeholder ("Select ...") is shown as the field's label only; it is disabled and hidden so it never appears in the list of choices.
-    function fillSelect(select, placeholder, items, key, label, selected='') {
-        select.innerHTML='';
-        const first=document.createElement('option');
-        first.value=''; first.textContent=placeholder;
-        first.disabled=true; first.hidden=true; first.style.display='none'; first.selected=true;
+    function normalizeFloor(value) {
+        const text = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+        if (/\bground\b|\bgf\b/.test(text)) return 'ground';
+        if (/\b(?:2nd|second|2)\s*(?:floor|f)?\b/.test(text)) return '2nd';
+        if (/\b(?:3rd|third|3)\s*(?:floor|f)?\b/.test(text)) return '3rd';
+        if (/\b(?:4th|fourth|4)\s*(?:floor|f)?\b/.test(text)) return '4th';
+        return '';
+    }
+
+    function resetSelect(select, placeholder) {
+        select.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = ''; first.textContent = placeholder; first.disabled = true; first.hidden = true; first.style.display = 'none'; first.selected = true;
         select.appendChild(first);
-        items.forEach(item=>{const opt=document.createElement('option');opt.value=item[key];opt.textContent=label(item);if(String(item[key])===String(selected))opt.selected=true;select.appendChild(opt);});
     }
 
     function updateEquipment(selected='') {
+        const electrical = category.value === 'Electrical';
+        equipmentGroup.hidden = !electrical;
+        const equipmentHint = document.getElementById('equipment_hint');
+        resetSelect(equipment, electrical ? 'Select equipment (optional)' : 'Equipment is only available for Electrical concerns');
+        if (!electrical || !locationSelection.value) {
+            equipment.value = '';
+            syncLocks();
+            return;
+        }
+        if (facility.value.startsWith('external:')) {
+            const externalId = facility.value.slice(9);
+            const matches = mrExternalEquipment.filter(x => {
+                const p=x.payload||{};
+                return String(p.facility_id||'')===externalId
+                    && String(p.lifecycle_status||'').toLowerCase()!=='disposed'
+                    && !p.disposed_at && !x.deleted_at;
+            });
+            equipmentHint.textContent = matches.length
+                ? 'LifeCycleTrack references at this facility; room is unspecified.'
+                : 'No LifeCycleTrack equipment is registered at this facility. You can submit without selecting equipment.';
+            matches.forEach(x => {
+                const p=x.payload||{}, option=document.createElement('option');
+                option.value='external:'+x.external_asset_id;
+                option.textContent='LifeCycleTrack — '+(p.name||'Equipment')+(x.external_asset_tag?' · '+x.external_asset_tag:'')+' (room unspecified)';
+                if (option.value===selected) option.selected=true;
+                equipment.appendChild(option);
+            });
+            const none=document.createElement('option'); none.value='';
+            none.textContent=matches.length?'No specific equipment':'No matching equipment — submit without equipment';
+            if (!matches.length) none.selected=true;
+            equipment.insertBefore(none,equipment.options[1]||null);
+            syncLocks(); return;
+        }
+        if (!mappedFacility.value || !floor.value) {
+            equipmentHint.textContent='No MaintainTrack floor record is available for local equipment at this location. You can submit without selecting equipment.';
+            const none=document.createElement('option'); none.value=''; none.textContent='No matching equipment — submit without equipment'; none.selected=true;
+            equipment.appendChild(none); syncLocks(); return;
+        }
         const matches = mrEquipment.filter(x =>
-            String(x.facility_id) === String(facility.value) &&
+            String(x.facility_id) === String(mappedFacility.value) &&
             String(x.floor_id) === String(floor.value) &&
-            String(x.room_id) === String(room.value) &&
-            String(x.category || '').toLowerCase() === String(category.value).toLowerCase() &&
+            String(x.room_id || '') === String(room.value || '') &&
             String(x.status || '').toLowerCase() === 'active'
         );
-        fillSelect(equipment, 'Select equipment (optional)', matches, 'equipment_id',
-            x => (x.display_id ? x.display_id + ' — ' : '') + x.name + (x.type ? ' (' + x.type + ')' : ''),
-            selected
-        );
-        // Equipment is optional: add a choice that leaves it blank (also lets the user clear a previous pick).
+        equipmentHint.textContent = matches.length
+            ? 'Active MaintainTrack equipment registered at the selected facility / room is listed.'
+            : 'No active equipment is registered at this facility / room. You can submit without selecting equipment.';
+        matches.forEach(x => {
+            const option = document.createElement('option');
+            option.value = x.equipment_id;
+            option.textContent = (x.display_id ? x.display_id + ' — ' : '') + x.name + (x.type ? ' (' + x.type + ')' : '');
+            if (String(x.equipment_id) === String(selected)) option.selected = true;
+            equipment.appendChild(option);
+        });
         const none = document.createElement('option');
-        none.value = ''; none.textContent = 'No specific equipment';
+        none.value = ''; none.textContent = matches.length ? 'No specific equipment' : 'No matching equipment — submit without equipment';
+        if (matches.length === 0) none.selected = true;
         equipment.insertBefore(none, equipment.options[1] || null);
+        syncLocks();
     }
 
-    function updateRooms(selected='') {
-        const matches = mrRooms.filter(x => String(x.floor_id) === String(floor.value));
-        fillSelect(room, 'Select room', matches, 'room_id',
-            x => x.name + (x.code ? ' (' + x.code + ')' : ''), selected
-        );
-        updateEquipment();
+    function updateLocations(restore=false) {
+        resetSelect(locationSelection, floorChoice.value ? 'Select facility / room' : 'Select a floor first');
+        locationSelection.dataset.hasOptions = 'false';
+        facility.value = ''; mappedFacility.value = ''; floor.value = ''; room.value = '';
+        if (!floorChoice.value) { updateEquipment(); return; }
+
+        const options = [];
+        mrFloors.filter(x => normalizeFloor((x.name || '') + ' ' + (x.code || '')) === floorChoice.value).forEach(f => {
+            const fFacility = mrFacilities.find(x => String(x.facility_id) === String(f.facility_id));
+            if (!fFacility) return;
+            const matchingRooms = mrRooms.filter(r => String(r.floor_id) === String(f.floor_id));
+            if (matchingRooms.length) {
+                matchingRooms.forEach(r => options.push({
+                    value: ['local', f.facility_id, f.floor_id, r.room_id],
+                    label: fFacility.name + ' / ' + r.name + (r.code ? ' (' + r.code + ')' : '')
+                }));
+            } else {
+                options.push({ value: ['local', f.facility_id, f.floor_id, ''], label: fFacility.name + ' / ' + f.name });
+            }
+        });
+        mrExternalFacilities.forEach(x => {
+            const payload = x.payload || {};
+            if (normalizeFloor(payload.location) !== floorChoice.value || !x.external_asset_id || !payload.name) return;
+            options.push({ value: ['external', x.external_asset_id], label: payload.name + (x.external_asset_tag ? ' · ' + x.external_asset_tag : '') + ' (LifeCycleTrack)' });
+        });
+
+        if (!options.length) {
+            locationSelection.options[0].textContent = 'No facility or room is registered on this floor';
+            syncLocks();
+            updateEquipment();
+            return;
+        }
+        locationSelection.dataset.hasOptions = 'true';
+        const restoreValue = restore ? JSON.stringify(oldLocation) : '';
+        options.forEach(x => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify(x.value);
+            option.textContent = x.label;
+            if (option.value === restoreValue) option.selected = true;
+            locationSelection.appendChild(option);
+        });
+        if (!restore || !options.some(x => JSON.stringify(x.value) === restoreValue)) locationSelection.selectedIndex = 0;
+        applyLocation(restore ? oldEquipment : '');
     }
 
-    function updateFloors(selected='') {
-        const matches = mrFloors.filter(x => String(x.facility_id) === String(facility.value));
-        fillSelect(floor, 'Select floor', matches, 'floor_id',
-            x => x.name + (x.code ? ' (' + x.code + ')' : ''), selected
-        );
-        updateRooms();
+    function applyLocation(selectedEquipment='') {
+        facility.value = ''; mappedFacility.value = ''; floor.value = ''; room.value = '';
+        if (locationSelection.value) {
+            try {
+                const value = JSON.parse(locationSelection.value);
+                if (value[0] === 'external') {
+                    facility.value = 'external:' + value[1];
+                    mappedFacility.value = '';
+                    floor.value = '';
+                    room.value = '';
+                } else if (value[0] === 'local') {
+                    facility.value = value[1] || '';
+                    mappedFacility.value = value[1] || '';
+                    floor.value = value[2] || '';
+                    room.value = value[3] || '';
+                }
+            } catch (_) {}
+        }
+        updateEquipment(selectedEquipment);
     }
 
-    facility.addEventListener('change',()=>updateFloors());
-    floor.addEventListener('change',()=>updateRooms());
-    room.addEventListener('change',()=>updateEquipment());
-    category.addEventListener('change',()=>updateEquipment());
+    floorChoice.addEventListener('change', () => updateLocations(false));
+    locationSelection.addEventListener('change', () => applyLocation());
+    category.addEventListener('change', () => updateEquipment());
 
-    // Registered after the handlers above, so locks refresh once the lists have been refilled.
-    [facility, floor, room, category].forEach(el => el.addEventListener('change', syncLocks));
+    updateLocations(true);
+    syncLocks();
 
     // Reset buttons: clear only their own section and refresh anything that depends on it.
     function clearFieldFlag(el) {
@@ -565,15 +730,10 @@ document.addEventListener('DOMContentLoaded', function () {
         category.dispatchEvent(new Event('change'));
     });
     document.getElementById('resetFacilityBtn').addEventListener('click', function () {
-        facility.selectedIndex = 0;
-        clearFieldFlag(facility);
-        // Dispatching change clears the floor, room and equipment lists and re-locks them.
-        facility.dispatchEvent(new Event('change'));
+        floorChoice.selectedIndex = 0;
+        clearFieldFlag(floorChoice);
+        updateLocations(false);
     });
-
-    updateFloors(oldFloor);
-    if(oldFloor){updateRooms(oldRoom);}
-    if(oldRoom){updateEquipment(oldEquipment);}
     syncLocks();
 
     /* ==========================================
@@ -765,6 +925,7 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.dupChecked='1';
             btn.disabled=true;btn.textContent='Submitting...';
             document.getElementById('loadingOverlay').hidden=false;
+            window.AppToast.queue('Request submitted successfully.');
             form.submit();
         }
         document.getElementById('duplicateProceed').onclick=function(){document.getElementById('duplicateModal').hidden=true;document.getElementById('confirmDuplicate').value='1';sendForm();};
@@ -781,6 +942,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <script>window.MT_NOTIF_USER = <?= json_encode((string) ($_SESSION['user_id'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script src="<?= e(appAssetUrl('assets/js/ToastNotifications.js')) ?>"></script>
 <script src="<?= e(appAssetUrl('assets/js/NotificationSound.js')) ?>"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/bodega.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
 
     if ($room === '') {
-        bodegaFlash('error', 'The ground floor bodega is not set up yet.');
+        bodegaFlash('error', 'The ground floor Storage Unit is not set up yet. Please contact an administrator.');
         bodegaRedirectHere();
     }
 
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 bodegaRedirectHere();
             }
         }
-        bodegaFlash('success', $name . ' was added to the bodega.');
+        bodegaFlash('success', $name . ' was added to the Storage Unit.');
         bodegaRedirectHere();
     }
 
@@ -97,15 +97,11 @@ renderHead('Inventory', 'Inventory.css', 'treasurer');
 <div class="page">
     <div class="one-card">
 
-    <?php renderPageHeader('Inventory', 'Bodega stock · Ground floor', 'treasurer'); ?>
+    <?php renderPageHeader('Inventory', 'Storage Unit stock · Ground floor', 'treasurer'); ?>
 
     <?php if ($pageError !== ''): ?>
         <div class="tr-alert error" role="alert"><?= e($pageError) ?></div>
     <?php endif; ?>
-    <?php if ($flash): ?>
-        <div class="tr-alert <?= e($flash['type']) ?>" role="status"><?= e($flash['text']) ?></div>
-    <?php endif; ?>
-
     <details class="tr-panel tr-add">
         <summary>+ Add item</summary>
         <form method="post" class="tr-form">
@@ -149,7 +145,7 @@ renderHead('Inventory', 'Inventory.css', 'treasurer');
         </div>
         <form method="get" class="tr-inline">
             <select class="tr-select" name="category" onchange="this.form.submit()">
-                <option value="" disabled hidden <?= $filterCategory === '' ? 'selected' : '' ?>>All categories</option>
+                <option value="" <?= $filterCategory === '' ? 'selected' : '' ?>>All categories</option>
                 <?php foreach (BODEGA_CATEGORIES as $cat): ?>
                     <option value="<?= e($cat) ?>" <?= $filterCategory === $cat ? 'selected' : '' ?>><?= e($cat) ?></option>
                 <?php endforeach; ?>
@@ -196,7 +192,7 @@ renderHead('Inventory', 'Inventory.css', 'treasurer');
                             <option value="consumable" <?= $type === 'consumable' ? 'selected' : '' ?>>Consumable</option>
                         </select>
                     </td>
-                    <td><?= (int) ($item['current_qty'] ?? 0) ?> <?= e($item['unit'] ?? '') ?></td>
+                    <td><?= bodegaAvailableQty($item) ?> <?= e($item['unit'] ?? '') ?></td>
                     <td>
                         <input class="tr-input tr-small" type="number" name="reorder_level" min="0" form="<?= e($formId) ?>" value="<?= (int) ($item['reorder_level'] ?? 0) ?>">
                     </td>
@@ -231,4 +227,12 @@ renderHead('Inventory', 'Inventory.css', 'treasurer');
     });
 </script>
 <?php renderFoot(); ?>
+<?php if ($flash): ?>
+<script>
+window.AppToast.show(
+    <?= json_encode((string) ($flash['text'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    <?= json_encode(($flash['type'] ?? '') === 'error' ? 'error' : 'success') ?>
+);
+</script>
+<?php endif; ?>
 <script src="<?= e(appAssetUrl('assets/js/LoadingOverlay.js')) ?>"></script>

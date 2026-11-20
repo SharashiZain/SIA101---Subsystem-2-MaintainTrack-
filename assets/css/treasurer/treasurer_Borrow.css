@@ -3,3 +3,63 @@
 /* Borrow/Return: the release form switches fields by borrower type (JS). */
 body[data-page="borrow"] #releaseForm .tr-field[hidden] { display: none; }
 body[data-page="borrow"] #releaseForm input[type="file"] { padding: 7px; font-size: 13px; }
+
+.tr-table-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.tr-filter-btn {
+  min-height: 36px;
+  padding: 7px 15px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.tr-filter-btn:hover {
+  border-color: var(--accent-light);
+  color: var(--primary-blue-hover);
+  background: var(--accent-soft);
+}
+
+.tr-filter-btn.active {
+  border-color: var(--primary-blue);
+  color: #ffffff;
+  background: var(--primary-blue);
+}
+
+.tr-filter-btn:focus-visible {
+  outline: 3px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.tr-table tr[hidden],
+.tr-table tr.tr-filter-empty[hidden] {
+  display: none;
+}
+
+.tr-table .tr-filter-empty td {
+  padding: 18px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .tr-table-filters {
+    gap: 6px;
+  }
+
+  .tr-filter-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

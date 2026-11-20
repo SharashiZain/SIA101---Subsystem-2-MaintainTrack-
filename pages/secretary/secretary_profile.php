@@ -2,7 +2,7 @@
 /* layout.php loads includes/session.php, which starts the secretary's own session.
    (Do not call session_start() before it, or the page falls back to the shared
    PHPSESSID, the role check fails and the page bounces to the login.) */
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../Components/layout.php';
 
 /* =========================================================
@@ -533,6 +533,7 @@ renderHead('Profile & Account', 'Profile.css', 'secretary');
                 text: result.warning || 'Your profile has been updated successfully!',
                 confirmText: 'OK'
             });
+            window.AppToast.show('Profile updated successfully.');
         });
 
         /* ==========================================
@@ -633,6 +634,7 @@ renderHead('Profile & Account', 'Profile.css', 'secretary');
                 text: result.warning || 'Your password has been updated successfully!',
                 confirmText: 'OK'
             });
+            window.AppToast.show('Password updated successfully.');
         });
 
         /* ==========================================

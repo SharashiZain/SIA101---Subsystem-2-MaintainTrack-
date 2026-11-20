@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../Components/layout.php';
 
 /* =========================================================
@@ -405,9 +405,10 @@ renderHead('History', 'History.css', 'secretary');
                 }
 
                 // Reload so the list, the status pill and the sort order are up to date
+                window.AppToast.queue('Request decision updated successfully.');
                 window.location.reload();
             } catch (err) {
-                alert(err.message);
+                window.AppToast.show(err.message, 'error');
             } finally {
                 changeConfirmYes.disabled = false;
                 closeChangeModals();

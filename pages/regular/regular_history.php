@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 function historyRequest(string $method, string $endpoint): array {
@@ -127,16 +127,16 @@ renderHead('History', 'History.css', 'regular');
                 <span class="search-icon">⌕</span>
             </div>
             <select class="filter-select" id="historyFilter" aria-label="Filter by status">
-                <option value="" disabled hidden selected>All Statuses</option>
+                <option value="" selected>All Statuses</option>
                 <option value="in-progress">In Progress</option>
                 <option value="pending">Pending</option>
                 <option value="completed">Completed</option>
             </select>
             <select class="filter-select" id="equipmentFilter" aria-label="Filter by equipment">
-                <option value="" disabled hidden selected>All Equipment</option>
+                <option value="" selected>All Equipment</option>
             </select>
             <select class="filter-select" id="roomFilter" aria-label="Filter by room">
-                <option value="" disabled hidden selected>All Rooms</option>
+                <option value="" selected>All Rooms</option>
             </select>
             <select class="filter-select" id="dateSort" aria-label="Sort requests by date">
                 <option value="newest">Newest to Oldest</option>
@@ -258,4 +258,3 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php renderFoot(); ?>
 </html>
 <script src="<?= e(appAssetUrl('assets/js/LoadingOverlay.js')) ?>"></script>
-   <script src="<?= $siteRoot ?? '' ?>../assets/js/NotificationSound.js"></script>

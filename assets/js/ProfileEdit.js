@@ -107,11 +107,11 @@
       var email = byId(cfg.emailId).value.trim();
 
       if (!fullName || !email) {
-        alert("Full name and email are required.");
+        window.AppToast.show("Full name and email are required.", "error");
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert("Please enter a valid email address.");
+        window.AppToast.show("Please enter a valid email address.", "error");
         return;
       }
 
@@ -124,7 +124,7 @@
       saveBtn.disabled = false;
 
       if (!result.ok) {
-        alert(result.error);
+        window.AppToast.show(result.error, "error");
         return;
       }
 
@@ -133,10 +133,10 @@
       lockInputs();
       showViewMode();
 
-      alert(
+      window.AppToast.show(
         result.warning
-          ? "Profile saved.\n\n" + result.warning
-          : "Profile updated successfully!",
+          ? "Profile saved. " + result.warning
+          : "Profile updated successfully.",
       );
     });
 
@@ -179,15 +179,15 @@
       var confirm = byId("confirmPassword").value;
 
       if (!current || !newPass || !confirm) {
-        alert("Please fill in all password fields.");
+        window.AppToast.show("Please fill in all password fields.", "error");
         return;
       }
       if (newPass.length < 6) {
-        alert("New password must be at least 6 characters.");
+        window.AppToast.show("New password must be at least 6 characters.", "error");
         return;
       }
       if (newPass !== confirm) {
-        alert("New passwords do not match.");
+        window.AppToast.show("New passwords do not match.", "error");
         return;
       }
 
@@ -200,14 +200,14 @@
       passwordModalSave.disabled = false;
 
       if (!result.ok) {
-        alert(result.error);
+        window.AppToast.show(result.error, "error");
         return;
       }
       closePasswordModal();
-      alert(
+      window.AppToast.show(
         result.warning
-          ? "Password saved.\n\n" + result.warning
-          : "Password updated successfully!",
+          ? "Password saved. " + result.warning
+          : "Password updated successfully.",
       );
     });
 

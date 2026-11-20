@@ -18,7 +18,7 @@
 
 date_default_timezone_set('Asia/Manila');
 
-require_once __DIR__ . '/../Config/supabase.php';
+require_once __DIR__ . '/supabase_client.php';
 
 if (!defined('BODEGA_BUCKET')) {
     define('BODEGA_BUCKET', 'bodega-documents');
@@ -119,7 +119,7 @@ if (!function_exists('bodegaList')) {
     {
         $result = bodegaRest('GET', $endpoint);
         if (!$result['success']) {
-            bodegaSetError('Unable to load bodega data. ' . (string) $result['error']);
+            bodegaSetError('Unable to load Storage Unit data. ' . (string) $result['error']);
             return [];
         }
         return $result['data'];
@@ -144,7 +144,7 @@ if (!function_exists('bodegaItems')) {
     {
         $room = bodegaRoomId();
         if ($room === '') {
-            bodegaSetError('The ground floor bodega is not set up yet. Add a facility room whose name contains "Bodega".');
+            bodegaSetError('The ground floor Storage Unit is not set up yet. Please contact an administrator.');
             return [];
         }
         return bodegaList('inventory_items?select=*&room_id=eq.' . rawurlencode($room) . '&order=name.asc');
@@ -236,7 +236,15 @@ if (!function_exists('bodegaDefaultType')) {
 if (!function_exists('bodegaIsLow')) {
     function bodegaIsLow(array $item): bool
     {
-        return (int) ($item['current_qty'] ?? 0) <= (int) ($item['reorder_level'] ?? 0);
+        return bodegaAvailableQty($item) <= (int) ($item['reorder_level'] ?? 0);
+    }
+}
+
+/* inventory_items.current_qty is the canonical available-stock count. */
+if (!function_exists('bodegaAvailableQty')) {
+    function bodegaAvailableQty(array $item): int
+    {
+        return (int) ($item['current_qty'] ?? 0);
     }
 }
 
@@ -279,17 +287,43 @@ if (!function_exists('bodegaDate')) {
 if (!function_exists('bodegaAdjustStock')) {
     function bodegaAdjustStock(string $itemId, int $delta): ?string
     {
-        $result = bodegaRest('GET', 'inventory_items?select=item_id,current_qty&item_id=eq.' . rawurlencode($itemId) . '&limit=1');
-        if (!$result['success'] || empty($result['data'][0])) {
-            return 'Item not found.';
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $result = bodegaRest(
+                'GET',
+                'inventory_items?select=item_id,current_qty&item_id=eq.' . rawurlencode($itemId) . '&limit=1'
+            );
+            if (!$result['success']) {
+                return 'Could not read the current stock. ' . (string) $result['error'];
+            }
+            if (empty($result['data'][0])) {
+                return 'Item not found.';
+            }
+
+            $current = (int) $result['data'][0]['current_qty'];
+            $next = $current + $delta;
+            if ($next < 0) {
+                return 'Not enough stock. Only ' . $current . ' left.';
+            }
+            if ($next === $current) {
+                return null;
+            }
+
+            $patch = bodegaRest(
+                'PATCH',
+                'inventory_items?item_id=eq.' . rawurlencode($itemId)
+                . '&current_qty=eq.' . $current,
+                ['current_qty' => $next],
+                'return=representation'
+            );
+            if (!$patch['success']) {
+                return 'Could not update stock. ' . (string) $patch['error'];
+            }
+            if (!empty($patch['data'])) {
+                return null;
+            }
         }
-        $current = (int) $result['data'][0]['current_qty'];
-        $next = $current + $delta;
-        if ($next < 0) {
-            return 'Not enough stock. Only ' . $current . ' left.';
-        }
-        $patch = bodegaRest('PATCH', 'inventory_items?item_id=eq.' . rawurlencode($itemId), ['current_qty' => $next], 'return=minimal');
-        return $patch['success'] ? null : (string) $patch['error'];
+
+        return 'Stock changed concurrently. Refresh and try again.';
     }
 }
 

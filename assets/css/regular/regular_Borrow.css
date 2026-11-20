@@ -1,0 +1,27 @@
+@import url("../treasurer/treasurer_Common.css");
+
+.page {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: calc(24px * var(--content-scale, 1))
+    calc(30px * var(--content-scale, 1)) calc(50px * var(--content-scale, 1));
+}
+
+.borrow-card {
+  width: 100%;
+}
+
+.borrow-card .tr-kpi strong {
+  color: var(--primary-blue);
+}
+
+.borrow-card .tr-table {
+  min-width: 680px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 18px 14px 36px;
+  }
+}

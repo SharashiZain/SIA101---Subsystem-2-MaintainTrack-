@@ -1,10 +1,18 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../Components/layout.php';
 require_once __DIR__ . '/../../Components/notification_view.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../includes/role_notifications.php';
+
+renderRoleNotificationPage('maintenance', 'Maintenance Personnel Portal • Barangay Gulod', [
+    ['key' => 'assignment', 'label' => 'New Tasks'],
+    ['key' => 'status', 'label' => 'Status Updates'],
+    ['key' => 'borrow', 'label' => 'Borrow Updates'],
+]);
+exit;
 
 /* =========================================================
    Supabase helper (server-side only)
@@ -94,7 +102,7 @@ if ($me && strtolower((string) ($me['role'] ?? '')) === 'maintenance') {
     $myId    = (string) $me['user_id'];
     $userKey = $myId;
 
-    $makeEvent = function (string $id, string $title, string $text, string $tone, string $category, ?string $when) use ($manila, $cutoff): ?array {
+    $makeEvent = function (string $id, string $title, string $text, string $tone, string $category, ?string $when, ?string $requestId = null) use ($manila, $cutoff): ?array {
         if (empty($when)) return null;
         try {
             $dt = new DateTime($when);
@@ -112,6 +120,7 @@ if ($me && strtolower((string) ($me['role'] ?? '')) === 'maintenance') {
             'time'     => $dt->format('M j, Y · g:i A'),
             'unread'   => $ts >= $cutoff,
             'category' => $category,
+            'related_request_id' => $requestId,
         ];
     };
 
@@ -165,7 +174,27 @@ if ($me && strtolower((string) ($me['role'] ?? '')) === 'maintenance') {
             trim((string) ($notice['message'] ?? '')) ?: ($labelOf($req) . ' was assigned to you. Please check the task details.'),
             'blue',
             'assignment',
-            $when
+            $when,
+            $rid
+        );
+        if ($ev) $events[] = $ev;
+    }
+
+    /* ---- Borrow approvals addressed directly to this worker ---- */
+    foreach ($notifRows as $n) {
+        $noticeTitle = trim((string) ($n['title'] ?? ''));
+        if (!in_array($noticeTitle, ['Borrow Request Approved', 'Item Request Approved'], true)) continue;
+        $notificationId = trim((string) ($n['notification_id'] ?? ''));
+        if ($notificationId === '') continue;
+        $relatedRequestId = (string) ($n['related_request_id'] ?? '');
+        $ev = $makeEvent(
+            'borrow-approved-' . $notificationId,
+            $noticeTitle,
+            (string) ($n['message'] ?? 'Your borrow request was approved.'),
+            'green',
+            'borrow',
+            $n['created_at'] ?? null,
+            mnIsUuid($relatedRequestId) ? $relatedRequestId : null
         );
         if ($ev) $events[] = $ev;
     }
@@ -181,13 +210,13 @@ if ($me && strtolower((string) ($me['role'] ?? '')) === 'maintenance') {
         $ev = null;
         if ($status === 'in progress') {
             $ev = $makeEvent('status-' . $stamp, 'Maintenance Request Updated',
-                $label . ' is now In Progress.', 'purple', 'status', $req['date_started'] ?? $when);
+                $label . ' is now In Progress.', 'purple', 'status', $req['date_started'] ?? $when, $rid);
         } elseif ($status === 'completed') {
             $ev = $makeEvent('status-' . $stamp, 'Maintenance Request Completed',
-                $label . ' has been completed.', 'orange', 'status', $req['date_completed'] ?? $when);
+                $label . ' has been completed.', 'orange', 'status', $req['date_completed'] ?? $when, $rid);
         } elseif ($status === 'fail to fix') {
             $ev = $makeEvent('status-' . $stamp, 'Maintenance Request Updated',
-                $label . ' could not be fixed yet. Check the updates on the request.', 'red', 'status', $when);
+                $label . ' could not be fixed yet. Check the updates on the request.', 'red', 'status', $when, $rid);
         }
         if ($ev) $events[] = $ev;
     }
@@ -207,7 +236,8 @@ if ($me && strtolower((string) ($me['role'] ?? '')) === 'maintenance') {
             $labelOf($req) . ' has been approved and is waiting for assignment.',
             'green',
             'request',
-            $req['approval_date'] ?? ($req['created_at'] ?? null)
+            $req['approval_date'] ?? ($req['created_at'] ?? null),
+            (string) $req['request_id']
         );
         if ($ev) $events[] = $ev;
     }
@@ -231,6 +261,7 @@ foreach ($events as $ev) {
         'time'     => $ev['time'],
         'unread'   => $ev['unread'],
         'category' => $ev['category'],
+        'related_request_id' => $ev['related_request_id'],
     ];
 }
 
@@ -249,6 +280,7 @@ renderNotificationPage('maintenance', 'Maintenance Personnel Portal • Barangay
     ['key' => 'assignment', 'label' => 'New Tasks'],
     ['key' => 'status',     'label' => 'Status Updates'],
     ['key' => 'request',    'label' => 'New Requests'],
+    ['key' => 'borrow',     'label' => 'Borrow Updates'],
 ]);
 ?>
 <script>

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 function dashboardApi(string $endpoint): array {
@@ -195,4 +195,3 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php renderFoot(); ?>
 </html>
 <script src="<?= e(appAssetUrl('assets/js/LoadingOverlay.js')) ?>"></script>
-   <script src="<?= $siteRoot ?? '' ?>../assets/js/NotificationSound.js"></script>

@@ -1,10 +1,21 @@
 <?php
 
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 
 require_once __DIR__ . '/../../Components/layout.php';
 
 require_once __DIR__ . '/../../includes/PriorityScore.php';
+
+if (mtRoleContext() !== 'secretary' || mtNormalizeRole($_SESSION['role'] ?? '') !== 'secretary') {
+    http_response_code(403);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_GET['action'] ?? '') === 'decide') {
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'Sign in using a Secretary account.']);
+    } else {
+        echo 'Access denied. Sign in using a Secretary account.';
+    }
+    exit;
+}
 
 /* =========================================================
 
@@ -14,7 +25,7 @@ require_once __DIR__ . '/../../includes/PriorityScore.php';
 
    this admin page. The key stays in PHP and is never sent to the browser.
 
-   (Your supabaseRequest() in Config/supabase.php always sends the
+   (Your supabaseRequest() in includes/supabase_client.php always sends the
 
    publishable key, so this page uses its own small helper.)
 
@@ -353,7 +364,7 @@ renderHead('Approvals', 'Approvals.css', 'secretary');
 
         <select id="approvalStatusFilter">
 
-            <option value="" disabled hidden>All Statuses</option>
+            <option value="">All Statuses</option>
 
             <option value="pending" selected>Pending Review</option>
 
@@ -365,7 +376,7 @@ renderHead('Approvals', 'Approvals.css', 'secretary');
 
         <select id="approvalUrgencyFilter">
 
-            <option value="" disabled hidden selected>All Urgency</option>
+            <option value="" selected>All Urgency</option>
 
             <option value="high">High</option>
 
@@ -970,6 +981,8 @@ renderHead('Approvals', 'Approvals.css', 'secretary');
 
             // Update the sidebar Approvals dot right away (hides it when nothing is left to approve)
             if (window.MTNotifSound && MTNotifSound.refreshApprovals) MTNotifSound.refreshApprovals();
+
+            window.AppToast.show(action === 'approve' ? 'Request approved successfully.' : 'Request rejected successfully.');
 
             SystemModal.open({
 

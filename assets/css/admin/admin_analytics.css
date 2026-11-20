@@ -26,9 +26,13 @@ body[data-page="analytics"] .dashboard {
 }
 
 body[data-page="analytics"] .page-header {
-  position: relative !important;
+  position: relative !important;  
   top: auto !important;
   margin-bottom: 32px;
+}
+body[data-page="analytics"] .an-col-value {
+  font-size: 16px; /* adjust up or down to taste */
+  font-weight: 600;
 }
 
 /* ==========================================================

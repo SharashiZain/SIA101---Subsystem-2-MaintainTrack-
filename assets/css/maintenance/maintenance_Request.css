@@ -1916,3 +1916,46 @@
 #maintenanceUpdateForm .mp-modal-actions {
   margin-top: 14px;
 }
+
+.mp-request-id-actions .mp-btn-request-item {
+  background: linear-gradient(135deg, #16805a, #116b4b);
+  box-shadow: 0 4px 12px rgba(22, 128, 90, 0.2);
+}
+
+.mp-request-id-actions .mp-btn-request-item:hover {
+  box-shadow: 0 6px 16px rgba(22, 128, 90, 0.28);
+}
+
+.mp-alert.warning {
+  background: #fff8e6;
+  color: #805a00;
+  border: 1px solid #e8cf85;
+}
+
+#itemRequestModal .mp-modal {
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+}
+
+#itemRequestModal .mp-modal-head {
+  margin-bottom: 12px;
+}
+
+#itemRequestModal .mp-item-request-hint {
+  margin: 8px 0 0;
+  color: #8a4b08;
+  font-size: 13px;
+}
+
+#itemRequestModal .mp-modal-actions .mp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .mp-request-id-actions .mp-btn-request-item {
+    max-width: 100%;
+    white-space: normal;
+  }
+}

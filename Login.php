@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 session_start();
 
-require_once __DIR__ . '/Config/supabase.php';
+require_once __DIR__ . '/includes/supabase_client.php';
 
 /**
  * MaintainTrack login using Supabase Auth.
@@ -84,7 +84,8 @@ if ($loginValue === '' || $password === '') {
     loginRedirect('Index.php');
 }
 
-if (!defined('SUPABASE_URL') || !defined('SUPABASE_ANON_KEY') || !defined('SUPABASE_SECRET_KEY')) {
+if (!defined('SUPABASE_URL') || !defined('SUPABASE_ANON_KEY') || !defined('SUPABASE_SECRET_KEY')
+    || trim((string) SUPABASE_SECRET_KEY) === '') {
     $_SESSION['login_error'] = 'Login service is not configured. Please contact the administrator.';
     loginRedirect('Index.php');
 }

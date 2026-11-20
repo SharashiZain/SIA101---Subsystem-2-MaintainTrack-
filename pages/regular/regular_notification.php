@@ -1,9 +1,16 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../Components/layout.php';
 require_once __DIR__ . '/../../Components/notification_view.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../includes/role_notifications.php';
+
+renderRoleNotificationPage('regular', 'Resident Portal • Barangay Gulod', [
+    ['key' => 'status', 'label' => 'Maintenance Updates'],
+    ['key' => 'borrow', 'label' => 'Borrow Updates'],
+]);
+exit;
 
 /* =========================================================
    Supabase helper (server-side only)
@@ -89,7 +96,7 @@ if ($currentUsername !== '') {
             $reqById[$r['request_id']] = $r;
         }
 
-        $makeEvent = function (string $title, string $text, string $tone, ?string $when) use ($manila, $cutoff): ?array {
+        $makeEvent = function (string $title, string $text, string $tone, ?string $when, ?string $requestId = null) use ($manila, $cutoff): ?array {
             if (empty($when)) return null;
             try {
                 $dt = new DateTime($when);
@@ -106,6 +113,7 @@ if ($currentUsername !== '') {
                 'text'   => $text,
                 'time'   => $dt->format('M j, Y · g:i A'),
                 'unread' => $ts >= $cutoff,
+                'related_request_id' => $requestId,
             ];
         };
 
@@ -135,28 +143,28 @@ if ($currentUsername !== '') {
                     case 'pending':
                         $ev = $makeEvent('Maintenance Request Submitted',
                             'Your maintenance request ' . $label . ' has been successfully submitted.',
-                            'green', $when);
+                            'green', $when, (string) $row['request_id']);
                         break;
                     case 'assigned':
                         $ev = $makeEvent('Maintenance Request Assigned',
                             'Your request ' . $label . ' has been assigned to ' . $worker . '.',
-                            'blue', $when);
+                            'blue', $when, (string) $row['request_id']);
                         break;
                     case 'in progress':
                         $ev = $makeEvent('Maintenance Request Updated',
                             'Your maintenance request ' . $label . ' is now In Progress.',
-                            'purple', $when);
+                            'purple', $when, (string) $row['request_id']);
                         break;
                     case 'completed':
                         $completedFromTimeline[(string) $row['request_id']] = true;
                         $ev = $makeEvent('Maintenance Request Completed',
                             'Your maintenance request ' . $label . ' has been completed.',
-                            'orange', $when);
+                            'orange', $when, (string) $row['request_id']);
                         break;
                     case 'fail to fix':
                         $ev = $makeEvent('Maintenance Request Updated',
                             $label . ' could not be fixed yet. Please check the updates on the request.',
-                            'red', $when);
+                            'red', $when, (string) $row['request_id']);
                         break;
                     case 'rejected':
                         // Rejections are intentionally not shown to the resident.
@@ -165,7 +173,7 @@ if ($currentUsername !== '') {
                         if ($status !== '') {
                             $ev = $makeEvent('Maintenance Request Updated',
                                 $label . ' was updated to ' . $status . '.',
-                                'purple', $when);
+                                'purple', $when, (string) $row['request_id']);
                         }
                 }
                 if ($ev) $events[] = $ev;
@@ -186,7 +194,7 @@ if ($currentUsername !== '') {
 
             $ev = $makeEvent('Maintenance Request Completed',
                 'Your maintenance request ' . $label . ' has been completed.',
-                'orange', $when);
+                'orange', $when, (string) $req['request_id']);
             if ($ev) $events[] = $ev;
         }
 
@@ -199,8 +207,30 @@ if ($currentUsername !== '') {
             if ($approval === 'Approved') {
                 $ev = $makeEvent('Request Approved',
                     $displayId . ' has been approved and sent to the maintenance team.',
-                    'green', $req['approval_date'] ?? null);
+                    'green', $req['approval_date'] ?? null, (string) $req['request_id']);
                 if ($ev) $events[] = $ev;
+            }
+        }
+
+        /* ---- 4) Borrow approvals addressed directly to this resident ---- */
+        $borrowNotifRes = regNotifRest(
+            'notifications?recipient_user_id=eq.' . rawurlencode((string) $me['user_id'])
+            . '&title=eq.' . rawurlencode('Borrow Request Approved')
+            . '&select=notification_id,title,message,related_request_id,created_at'
+            . '&order=created_at.desc&limit=100'
+        );
+        foreach (($borrowNotifRes['data'] ?? []) as $notice) {
+            if (!is_array($notice) || empty($notice['notification_id'])) continue;
+            $ev = $makeEvent(
+                (string) ($notice['title'] ?? 'Borrow Request Approved'),
+                (string) ($notice['message'] ?? 'Your borrow request was approved.'),
+                'green',
+                $notice['created_at'] ?? null,
+                !empty($notice['related_request_id']) ? (string) $notice['related_request_id'] : null
+            );
+            if ($ev) {
+                $ev['id'] = md5('borrow-approved|' . (string) $notice['notification_id']);
+                $events[] = $ev;
             }
         }
     }
@@ -228,6 +258,7 @@ foreach ($events as $ev) {
         'time'     => $ev['time'],
         'unread'   => $ev['unread'],
         'category' => 'maintenance',
+        'related_request_id' => $ev['related_request_id'],
     ];
 }
 

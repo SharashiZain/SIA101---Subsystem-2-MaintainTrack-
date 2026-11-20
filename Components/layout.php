@@ -221,6 +221,7 @@ if (!function_exists('roleNavigationItems')) {
                     ['label' => 'Dashboard', 'href' => 'Dashboard.php', 'icon' => '<path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-7h6v7"></path>'],
                     ['label' => 'Reports', 'href' => 'Report.php', 'icon' => '<path d="M4 5h16v14H4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>'],
                     ['label' => 'History', 'href' => 'History.php', 'icon' => '<path d="M3 12a9 9 0 1 0 9-9"></path><path d="M3 4v8h8"></path>'],
+                    ['label' => 'Borrow/Return', 'href' => 'Borrow.php', 'icon' => '<path d="M7 7h11l-3-3"></path><path d="M17 17H6l3 3"></path>'],
                     ['label' => 'Notification', 'href' => 'Notification.php', 'icon' => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path>', 'indicator' => 'dot'],
                     
                 ];
@@ -230,6 +231,7 @@ if (!function_exists('roleNavigationItems')) {
                     ['label' => 'Dashboard', 'href' => 'Dashboard.php', 'icon' => '<path d="M3 11l9-7 9 7"></path><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"></path>'],
                     ['label' => 'Facility', 'href' => 'Facility.php', 'icon' => '<rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 3h6v3H9z"></path><path d="M8 11h8M8 15h5"></path>'],
                     ['label' => 'Task', 'href' => 'Task.php', 'icon' => '<circle cx="12" cy="12" r="8.5"></circle><path d="M12 8v4l3 2"></path>'],
+                    ['label' => 'Borrow/Return', 'href' => 'Borrow.php', 'icon' => '<path d="M7 7h11l-3-3"></path><path d="M17 17H6l3 3"></path>'],
                     ['label' => 'Notification', 'href' => 'Notification.php', 'icon' => '<path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z"></path><path d="M10 20a2 2 0 0 0 4 0"></path>', 'indicator' => 'dot'],
                 ];
 
@@ -334,6 +336,7 @@ if (!function_exists('renderHead')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($title) ?></title>
     <link rel="stylesheet" href="<?= e(appAssetUrl('assets/css/base.css')) ?>">
+    <link rel="stylesheet" href="<?= e(appAssetUrl('assets/css/ToastNotifications.css')) ?>">
     <link rel="stylesheet" href="<?= e(appAssetUrl($resolvedCss)) ?>">
 <?php if ($roleKey !== 'admin'): ?>
     <!-- Uniform design: loaded last so Regular / Maintenance / Secretary match the Admin look -->
@@ -362,7 +365,7 @@ if (!function_exists('renderPageHeader')) {
             if ($roleKey === 'maintenance') {
                 $subtitle = 'Maintenance Personnel Portal · Barangay Gulod';
             } elseif ($roleKey === 'treasurer') {
-                $subtitle = 'Bodega & Procurement Portal · Barangay Gulod';
+                $subtitle = 'Storage Unit & Procurement Portal · Barangay Gulod';
             } elseif ($roleKey === 'secretary') {
                 $subtitle = 'Approval & Concern Portal · Barangay Gulod';
             } elseif ($roleKey === 'regular' || $roleKey === 'user') {
@@ -412,6 +415,7 @@ if (!function_exists('renderFoot')) {
     </div>
 </div>
 <script>window.MT_NOTIF_USER = <?= json_encode((string) ($_SESSION['user_id'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script src="<?= e(appAssetUrl('assets/js/ToastNotifications.js')) ?>"></script>
 <script src="<?= e(appAssetUrl('assets/js/NotificationSound.js')) ?>"></script>
 </body>
 </html>

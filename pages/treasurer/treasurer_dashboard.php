@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 require_once __DIR__ . '/../../Components/layout.php';
-require_once __DIR__ . '/../../Config/supabase.php';
+require_once __DIR__ . '/../../includes/supabase_client.php';
 require_once __DIR__ . '/../../includes/bodega.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -35,7 +35,7 @@ renderHead('Treasurer Dashboard', 'Dashboard.css', 'treasurer');
 <div class="page">
     <div class="one-card">
 
-    <?php renderPageHeader('Treasurer Dashboard', 'Bodega stock, borrows and spending', 'treasurer'); ?>
+    <?php renderPageHeader('Treasurer Dashboard', 'Storage Unit stock, borrows and spending', 'treasurer'); ?>
 
     <?php if ($pageError !== ''): ?>
         <div class="tr-alert error" role="alert"><?= e($pageError) ?></div>
@@ -58,7 +58,7 @@ renderHead('Treasurer Dashboard', 'Dashboard.css', 'treasurer');
                 <?php foreach (array_slice($lowStock, 0, 8) as $item): ?>
                     <li>
                         <span class="tr-strong"><?= e($item['name']) ?></span>
-                        <span class="tr-muted"><?= (int) $item['current_qty'] ?> left · reorder at <?= (int) $item['reorder_level'] ?></span>
+                        <span class="tr-muted"><?= bodegaAvailableQty($item) ?> left · reorder at <?= (int) $item['reorder_level'] ?></span>
                     </li>
                 <?php endforeach; ?>
                 </ul>
