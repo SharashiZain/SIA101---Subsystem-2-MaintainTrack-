@@ -7,11 +7,12 @@ require_once __DIR__ . '/../../includes/DuplicateReport.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 function maintenanceRequest(string $method, string $endpoint, ?array $payload = null, array $extraHeaders = []): array {
-    if (!defined('SUPABASE_URL') || !defined('SUPABASE_SECRET_KEY') || !function_exists('curl_init')) {
+    if (SUPABASE_URL === '' || SUPABASE_SECRET_KEY === '' || !function_exists('curl_init')) {
         return ['success'=>false,'status'=>0,'data'=>null,'error'=>'Supabase configuration or PHP cURL is missing.'];
     }
     $url = rtrim(SUPABASE_URL, '/') . '/rest/v1/' . ltrim($endpoint, '/');
-    $headers = ['apikey: '.SUPABASE_SECRET_KEY, 'Authorization: Bearer '.SUPABASE_SECRET_KEY, 'Content-Type: application/json', 'Accept: application/json'];
+    $headers = ['apikey: '.SUPABASE_SECRET_KEY, 'Content-Type: application/json', 'Accept: application/json'];
+    if (!str_starts_with(SUPABASE_SECRET_KEY, 'sb_secret_')) $headers[] = 'Authorization: Bearer '.SUPABASE_SECRET_KEY;
     foreach ($extraHeaders as $header) $headers[] = $header;
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_CUSTOMREQUEST=>strtoupper($method), CURLOPT_HTTPHEADER=>$headers, CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>45]);
@@ -23,6 +24,34 @@ function maintenanceRequest(string $method, string $endpoint, ?array $payload = 
 }
 function mrEscape($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function mrGet(string $endpoint): array { $r=maintenanceRequest('GET',$endpoint); return ($r['success'] && is_array($r['data'])) ? $r['data'] : []; }
+function mrSubmissionId(): string {
+    $hex = bin2hex(random_bytes(16));
+    return substr($hex,0,8).'-'.substr($hex,8,4).'-4'.substr($hex,13,3).'-a'.substr($hex,17,3).'-'.substr($hex,20);
+}
+function mrSavedCatalog(string $entity): array {
+    $records = [];
+    $after = '';
+    do {
+        $path = 'external_asset_snapshots?select=external_asset_id,external_asset_tag,payload,received_at'
+            . '&external_system=eq.LifeCycleTrack&entity_type=eq.' . $entity
+            . '&deleted_at=is.null&order=external_asset_id.asc&limit=250';
+        if ($after !== '') $path .= '&external_asset_id=gt.' . rawurlencode($after);
+        $result = maintenanceRequest('GET',$path);
+        if (!$result['success'] || !is_array($result['data'])) {
+            error_log('MaintainTrack could not read its saved ' . $entity . ' catalog.');
+            break;
+        }
+        $page = $result['data'];
+        foreach ($page as $row) {
+            $after = (string) $row['external_asset_id'];
+            $payload = $row['payload'] ?? [];
+            if (strtolower((string)($payload['lifecycle_status'] ?? '')) === 'disposed'
+                || !empty($payload['disposed_at']) || empty($payload['name'])) continue;
+            $records[] = $row;
+        }
+    } while ($page !== [] && $after !== '');
+    return $records;
+}
 function reportNormalizeCategory($category): string {
     $value = trim((string) $category);
     return strtolower(preg_replace('/[^a-z]/i', '', $value)) === 'nonelectrical' ? 'Non-Electrical' : $value;
@@ -55,15 +84,19 @@ function mrDeleteUpload(string $path): bool {
 }
 
 $error=''; $success=$_SESSION['maintenance_request_success']??''; unset($_SESSION['maintenance_request_success']);
-$facilities=mrGet('facilities?select=facility_id,name,code&order=name.asc');
-$externalFacilities=mrGet('external_asset_snapshots?select=external_asset_id,external_asset_tag,payload&external_system=eq.LifeCycleTrack&entity_type=eq.facility&deleted_at=is.null&order=external_asset_tag.asc');
-$externalEquipment=mrGet('external_asset_snapshots?select=external_asset_id,external_asset_tag,payload,deleted_at&external_system=eq.LifeCycleTrack&entity_type=eq.equipment&deleted_at=is.null&order=external_asset_tag.asc');
-$floors=mrGet('facility_floors?select=floor_id,facility_id,name,code&order=name.asc');
-$rooms=mrGet('facility_rooms?select=room_id,floor_id,name,code&order=name.asc');
-$equipment=mrGet('equipment?select=equipment_id,display_id,name,type,category,facility_id,floor_id,room_id,status&status=eq.Active&order=name.asc');
+$_SESSION['report_csrf'] ??= bin2hex(random_bytes(32));
+$submittedId = (string) ($_POST['submission_id'] ?? '');
+$validSubmissionId = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D', $submittedId);
+$submissionId = $validSubmissionId ? $submittedId : mrSubmissionId();
 
 /* Pre-check called by the page's JavaScript before the form is sent (keeps the chosen photo). */
 if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_GET['check_duplicate'])) {
+    if (($_SESSION['role'] ?? '') !== 'regular' || !hash_equals($_SESSION['report_csrf'], (string) ($_POST['report_csrf'] ?? ''))) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['check_failed'=>true]);
+        exit;
+    }
     $dup=findDuplicateReport(function(string $e): ?array { $r=maintenanceRequest('GET',$e); return ($r['success'] && is_array($r['data'])) ? $r['data'] : null; },trim((string)($_POST['room_id']??'')),trim((string)($_POST['equipment_id']??'')),(string)($_POST['concern']??''));
     header('Content-Type: application/json');
     echo json_encode($dup ? ['duplicate'=>true,'label'=>duplicateReportLabel($dup),'concern'=>$dup['concern'],'display_id'=>$dup['display_id'],'progress'=>duplicateReportProgress($dup),'handled'=>duplicateReportIsHandled($dup)] : ['duplicate'=>false,'check_failed'=>!empty($GLOBALS['duplicateCheckFailed'])]);
@@ -74,9 +107,12 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $concern=reportUppercase((string)($_POST['concern']??''));
     $equipmentCategory=reportNormalizeCategory($_POST['equipment_category']??'');
     $facilitySelection=trim((string)($_POST['facility_id']??''));
+    $manualLocation=$facilitySelection==='unlisted';
+    $reportedLocation=trim((string)($_POST['reported_location']??''));
+    $reportedEquipment=trim((string)($_POST['reported_equipment']??''));
     $isExternalFacility=str_starts_with($facilitySelection,'external:');
     $externalFacilityId=$isExternalFacility?substr($facilitySelection,9):'';
-    $facilityId=$isExternalFacility?'':$facilitySelection;
+    $facilityId=$isExternalFacility||$manualLocation?'':$facilitySelection;
     $mappedFacilityId='';
     $floorId=trim((string)($_POST['floor_id']??''));
     $floorChoice=trim((string)($_POST['floor_choice']??''));
@@ -88,7 +124,15 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $description=reportUppercase((string)($_POST['description']??''));
     $date=trim((string)($_POST['date_reported']??date('Y-m-d')));
 
-    if ($concern==='' || !in_array($equipmentCategory,['Electrical','Non-Electrical'],true) || $facilitySelection==='' || !in_array($floorChoice,['ground','2nd','3rd','4th'],true) || (!$isExternalFacility && !$floorId) || $description==='' || $date==='') $error='Please complete all required fields.';
+    if (!$validSubmissionId || !hash_equals($_SESSION['report_csrf'], (string) ($_POST['report_csrf'] ?? ''))) {
+        $error='This form expired. Review your entries and submit again.';
+    } elseif ($concern==='' || !in_array($equipmentCategory,['Electrical','Non-Electrical'],true) || $facilitySelection==='' || !in_array($floorChoice,['ground','2nd','3rd','4th'],true) || (!$isExternalFacility && !$manualLocation && !$floorId) || $description==='' || $date==='') {
+        $error='Please complete all required fields.';
+    }
+    if ($error==='' && $manualLocation && ($reportedLocation==='' || mb_strlen($reportedLocation)>200 || mb_strlen($reportedEquipment)>120
+        || $floorId!=='' || $roomId!=='' || $equipmentSelection!=='')) {
+        $error='Describe the unlisted location in up to 200 characters and the optional equipment in up to 120 characters.';
+    }
     if ($equipmentCategory!=='Electrical' && ($equipmentId!=='' || $isExternalEquipment)) $error='Equipment can only be selected for an Electrical concern.';
     if ($isExternalEquipment && !$isExternalFacility) $error='LifeCycleTrack equipment must be selected with its LifeCycleTrack facility.';
 
@@ -104,6 +148,16 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         }
     }
 
+    if ($error==='') {
+        $existing=mrGet('maintenance_requests?select=display_id&reported_by=eq.'.rawurlencode($currentUser['user_id'])
+            .'&submission_id=eq.'.rawurlencode($submissionId).'&limit=1');
+        if (!empty($existing[0]['display_id'])) {
+            $_SESSION['maintenance_request_success']='Maintenance request '.$existing[0]['display_id'].' submitted successfully.';
+            header('Location: '.$_SERVER['PHP_SELF'], true, 303);
+            exit;
+        }
+    }
+
     $facility=$floor=$room=$selectedEquipment=$selectedExternalEquipment=null;
     $externalEquipmentName=null;
     if ($error==='' && $isExternalFacility) {
@@ -111,7 +165,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         $externalFacility=$r['data'][0]??null;
         $externalPayload=is_array($externalFacility['payload']??null)?$externalFacility['payload']:[];
         $externalFacilityName=trim((string)($externalPayload['name']??''));
-        if (!$externalFacility || $externalFacilityName==='' || reportFloorChoice($externalPayload['location']??'')!==$floorChoice) $error='The selected LifeCycleTrack facility reference is no longer available on that floor. Refresh and select it again.';
+        if (!$externalFacility || $externalFacilityName==='' || reportFloorChoice($externalPayload['location']??'')!==$floorChoice
+            || strtolower((string)($externalPayload['lifecycle_status']??''))==='disposed' || !empty($externalPayload['disposed_at'])) {
+            $error='The saved facility changed. Select another location or choose Asset or location not listed.';
+        }
         else $facility=['name'=>$externalFacilityName];
         if ($error==='' && ($floorId!=='' || $roomId!=='')) $error='LifeCycleTrack locations are matched at facility level; refresh and select the facility again.';
         if ($error==='' && $isExternalEquipment) {
@@ -127,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
                 if ($externalEquipmentName==='') $error='The selected LifeCycleTrack equipment has no valid name.';
             }
         }
-    } elseif ($error==='') {
+    } elseif ($error==='' && !$manualLocation) {
         $r=maintenanceRequest('GET','facilities?select=facility_id,name&facility_id=eq.'.rawurlencode($facilityId).'&limit=1');
         $facility=$r['data'][0]??null;
         $r=maintenanceRequest('GET','facility_floors?select=floor_id,facility_id,name,code&floor_id=eq.'.rawurlencode($floorId).'&facility_id=eq.'.rawurlencode($facilityId).'&limit=1');
@@ -159,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         if ($dup) $error='This concern was already reported: '.duplicateReportLabel($dup).'. '.duplicateReportProgress($dup).' If your problem is different, press Submit Request again and choose "Submit anyway".';
     }
 
-    $imagePath=null; $displayId='';
+    $imagePath=null;
     if ($error==='' && isset($_FILES['photo']) && $_FILES['photo']['error']!==UPLOAD_ERR_NO_FILE) {
         $file=$_FILES['photo'];
         if ($file['error']!==UPLOAD_ERR_OK) $error='The photo could not be uploaded.';
@@ -169,11 +226,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             $exts=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
             if (!isset($exts[$mime])) $error='Photo must be JPG, PNG, or WEBP.';
             else {
-                $latest=maintenanceRequest('GET','maintenance_requests?select=display_id&display_id=match.%5EMT-%5B0-9%5D%2B%24&order=display_id.desc&limit=1');
-                $next=1; $last=$latest['data'][0]['display_id']??'';
-                if (preg_match('/MT-(\d+)/',(string)$last,$m)) $next=(int)$m[1]+1;
-                $displayId='MT-'.str_pad((string)$next,5,'0',STR_PAD_LEFT);
-                $imagePath='maintenance-reports/'.$displayId.'_'.bin2hex(random_bytes(8)).'.'.$exts[$mime];
+                $imagePath='maintenance-reports/'.$submissionId.'_'.bin2hex(random_bytes(8)).'.'.$exts[$mime];
                 $up=mrUpload($imagePath,$file['tmp_name'],$mime);
                 if (!$up['success']) { $error='Photo upload failed: '.($up['error']??'Unknown storage error.'); $imagePath=null; }
             }
@@ -205,44 +258,40 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             $autoPriority=$scored['level'];
         } catch (Throwable $e) { $autoPriority='Medium'; }
 
-        // Try up to 3 times: if two users submit at the same moment and get the same MT- number (HTTP 409 conflict), pick the next number and retry.
-        for ($attempt=0; $attempt<3; $attempt++) {
-            if ($attempt>0 || $displayId==='') {
-                $latest=maintenanceRequest('GET','maintenance_requests?select=display_id&display_id=match.%5EMT-%5B0-9%5D%2B%24&order=display_id.desc&limit=1');
-                $next=1; $last=$latest['data'][0]['display_id']??''; if (preg_match('/MT-(\d+)/',(string)$last,$m)) $next=(int)$m[1]+1;
-                $displayId='MT-'.str_pad((string)$next,5,'0',STR_PAD_LEFT);
-            }
-            $payload=[
-                'display_id'=>$displayId, 'concern'=>$concern, 'description'=>$description,
+        $payload=[
+                'concern'=>$concern, 'description'=>$description,
                 'category'=>$requestCategory, 'equipment_category'=>$equipmentCategory,
-                'priority'=>$autoPriority, 'status'=>'Pending', 'facility_id'=>$facilityId!==''?$facilityId:null,
+                'priority'=>$autoPriority, 'facility_id'=>$facilityId!==''?$facilityId:null,
                 'external_facility_id'=>$isExternalFacility?$externalFacilityId:null,
-                'external_facility_name'=>$isExternalFacility?($facility['name']??null):null,
                 'external_equipment_id'=>$isExternalEquipment?$externalEquipmentId:null,
-                'external_equipment_name'=>$isExternalEquipment?($externalEquipmentName??null):null,
                 'floor_id'=>$floorId!==''?$floorId:null, 'room_id'=>$roomId!==''?$roomId:null,
-                'specific_area'=>$room['name']??($floor['name']??($facility['name']??null)),
-                'equipment_id'=>$equipmentId!==''?$equipmentId:null, 'reported_by'=>$currentUser['user_id'],
-                'image_path'=>$imagePath, 'date_reported'=>$dateTimestamp
-            ];
-            $saved=maintenanceRequest('POST','maintenance_requests',$payload,['Prefer: return=representation']);
-            if ($saved['success'] || (int)$saved['status']!==409) break;
-        }
+                'equipment_id'=>$equipmentId!==''?$equipmentId:null,
+                'image_path'=>$imagePath, 'date_reported'=>$dateTimestamp, 'reported_floor'=>$floorChoice,
+                'reported_location'=>$manualLocation?$reportedLocation:null,
+                'reported_equipment'=>$manualLocation && $equipmentCategory==='Electrical' && $reportedEquipment!==''?$reportedEquipment:null,
+        ];
+        $saved=maintenanceRequest('POST','rpc/maintain_submit_report',[
+            'p_reporter'=>$currentUser['user_id'], 'p_submission'=>$submissionId, 'p_report'=>$payload,
+        ]);
         if (!$saved['success']) {
             $error='Unable to submit maintenance request. '.($saved['error']??'Please check the database migration and try again.');
-            // The request was not saved, so remove the photo that was already uploaded to storage.
-            if ($imagePath) { mrDeleteUpload($imagePath); $imagePath=null; }
+            // A transport failure can occur after commit. Preserve any potentially linked upload.
+            if ($imagePath && $saved['status']>=400 && $saved['status']<500) mrDeleteUpload($imagePath);
         } else {
-            $created=$saved['data'][0]??[]; $requestId=$created['request_id']??null;
-            if ($requestId) {
-                maintenanceRequest('POST','request_timeline',['request_id'=>$requestId,'status'=>'Pending','actor_user_id'=>$currentUser['user_id'],'note'=>'Maintenance request submitted']);
-                maintenanceRequest('POST','activity_log',['action_text'=>$displayId.' submitted by '.($currentUser['full_name']??'Regular User'),'related_request_id'=>$requestId,'actor_user_id'=>$currentUser['user_id']]);
-            }
-            $_SESSION['maintenance_request_success']='Maintenance request '.$displayId.' submitted successfully.';
-            header('Location: '.$_SERVER['PHP_SELF']); exit;
+            $created=$saved['data'];
+            if ($imagePath && ($created['duplicate']??false) && ($created['image_path']??null)!==$imagePath) mrDeleteUpload($imagePath);
+            $_SESSION['maintenance_request_success']='Maintenance request '.$created['display_id'].' submitted successfully.';
+            header('Location: '.$_SERVER['PHP_SELF'], true, 303); exit;
         }
     }
 }
+
+$facilities=mrGet('facilities?select=facility_id,name,code&order=name.asc');
+$externalFacilities=mrSavedCatalog('facility');
+$externalEquipment=mrSavedCatalog('equipment');
+$floors=mrGet('facility_floors?select=floor_id,facility_id,name,code&order=name.asc');
+$rooms=mrGet('facility_rooms?select=room_id,floor_id,name,code&order=name.asc');
+$equipment=mrGet('equipment?select=equipment_id,display_id,name,type,category,facility_id,floor_id,room_id,status&status=eq.Active&order=name.asc');
 
 ?>
 <!DOCTYPE html>
@@ -352,6 +401,8 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 <main class="page">
 
     <form class="report-card" id="reportForm" method="POST" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="submission_id" value="<?=mrEscape($submissionId)?>">
+        <input type="hidden" name="report_csrf" value="<?=mrEscape($_SESSION['report_csrf'])?>">
         <input type="hidden" name="confirm_duplicate" id="confirmDuplicate" value="0">
         <?php renderPageHeader('My Report', 'Maintenance Reporting Portal · Barangay Gulod', 'regular'); ?>
 
@@ -410,11 +461,23 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
                 <input type="hidden" id="mapped_facility_id" value="">
                 <input type="hidden" id="floor_id" name="floor_id" value="<?=mrEscape($_POST['floor_id']??'')?>">
                 <input type="hidden" id="room_id" name="room_id" value="<?=mrEscape($_POST['room_id']??'')?>">
+                <small id="facility_sync_hint" class="form-hint" aria-live="polite"></small>
             </div>
             <div class="form-group" id="equipment_group" <?=($_POST['equipment_category']??'')==='Electrical'?'':'hidden'?>>
                 <label for="equipment_id">Equipment <span style="font-weight:400;">(optional)</span></label>
                 <div class="select-wrap"><select id="equipment_id" name="equipment_id"><option value="" disabled selected hidden style="display:none">Select equipment (optional)</option></select><div class="select-guard"></div></div>
                 <small class="form-hint" id="equipment_hint">Equipment is optional for Electrical concerns.</small>
+            </div>
+        </div>
+        <div class="form-row" id="unlisted_location_fields" hidden>
+            <div class="form-group">
+                <label for="reported_location">Describe the location <span>*</span></label>
+                <input type="text" id="reported_location" name="reported_location" maxlength="200" value="<?=mrEscape($_POST['reported_location']??'')?>" disabled>
+                <small class="form-hint">An admin will review the location and link the request to a registered asset.</small>
+            </div>
+            <div class="form-group" id="reported_equipment_group" hidden>
+                <label for="reported_equipment">Equipment name or tag (optional)</label>
+                <input type="text" id="reported_equipment" name="reported_equipment" maxlength="120" value="<?=mrEscape($_POST['reported_equipment']??'')?>" disabled>
             </div>
         </div>
         <div class="form-row">
@@ -503,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const mrEquipment = <?=json_encode($equipment,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const mrExternalFacilities = <?=json_encode($externalFacilities,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const mrExternalEquipment = <?=json_encode($externalEquipment,JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
-    const oldLocation = <?=json_encode(str_starts_with((string)($_POST['facility_id']??''),'external:') ? ['external',substr((string)$_POST['facility_id'],9)] : ['local',(string)($_POST['facility_id']??''),(string)($_POST['floor_id']??''),(string)($_POST['room_id']??'')],JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
+    const oldLocation = <?=json_encode(($_POST['facility_id']??'')==='unlisted' ? ['unlisted'] : (str_starts_with((string)($_POST['facility_id']??''),'external:') ? ['external',substr((string)$_POST['facility_id'],9)] : ['local',(string)($_POST['facility_id']??''),(string)($_POST['floor_id']??''),(string)($_POST['room_id']??'')]),JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP)?>;
     const oldEquipment = <?=json_encode((string)($_POST['equipment_id']??''))?>;
 
     const category = document.getElementById('equipment_category');
@@ -515,6 +578,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const locationSelection = document.getElementById('location_selection');
     const equipmentGroup = document.getElementById('equipment_group');
     const equipment = document.getElementById('equipment_id');
+    const unlistedFields = document.getElementById('unlisted_location_fields');
+    const reportedLocation = document.getElementById('reported_location');
+    const reportedEquipment = document.getElementById('reported_equipment');
+    const reportedEquipmentGroup = document.getElementById('reported_equipment_group');
+    const facilitySyncHint = document.getElementById('facility_sync_hint');
+
+    function lastSynced(value) {
+        const date = new Date(value);
+        return !value || Number.isNaN(date.getTime()) ? 'Sync time unavailable' : 'Last synced ' + date.toLocaleString();
+    }
 
     const lockDefs = [
         { select: locationSelection, needs: [floorChoice] },
@@ -529,7 +602,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function firstMissing(d) { return d.needs.find(el => !el.value) || null; }
     function syncLocks() {
         const electrical = category.value === 'Electrical';
-        equipmentGroup.hidden = !electrical;
+        const unlisted = facility.value === 'unlisted';
+        equipmentGroup.hidden = !electrical || unlisted;
+        unlistedFields.hidden = !unlisted;
+        reportedLocation.disabled = !unlisted;
+        reportedLocation.required = unlisted;
+        reportedEquipment.disabled = !unlisted || !electrical;
+        reportedEquipmentGroup.hidden = reportedEquipment.disabled;
         lockDefs.forEach(d => {
             const locked = !!firstMissing(d)
                 || (d.select === locationSelection && locationSelection.dataset.hasOptions === 'false')
@@ -585,7 +664,7 @@ document.addEventListener('DOMContentLoaded', function () {
         equipmentGroup.hidden = !electrical;
         const equipmentHint = document.getElementById('equipment_hint');
         resetSelect(equipment, electrical ? 'Select equipment (optional)' : 'Equipment is only available for Electrical concerns');
-        if (!electrical || !locationSelection.value) {
+        if (!electrical || !locationSelection.value || facility.value === 'unlisted') {
             equipment.value = '';
             syncLocks();
             return;
@@ -604,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
             matches.forEach(x => {
                 const p=x.payload||{}, option=document.createElement('option');
                 option.value='external:'+x.external_asset_id;
-                option.textContent='LifeCycleTrack — '+(p.name||'Equipment')+(x.external_asset_tag?' · '+x.external_asset_tag:'')+' (room unspecified)';
+                option.textContent='LifeCycleTrack · '+p.name+(x.external_asset_tag?' · '+x.external_asset_tag:'')+' · '+lastSynced(x.received_at);
                 if (option.value===selected) option.selected=true;
                 equipment.appendChild(option);
             });
@@ -668,12 +747,7 @@ document.addEventListener('DOMContentLoaded', function () {
             options.push({ value: ['external', x.external_asset_id], label: payload.name + (x.external_asset_tag ? ' · ' + x.external_asset_tag : '') + ' (LifeCycleTrack)' });
         });
 
-        if (!options.length) {
-            locationSelection.options[0].textContent = 'No facility or room is registered on this floor';
-            syncLocks();
-            updateEquipment();
-            return;
-        }
+        options.push({ value: ['unlisted'], label: 'Asset or location not listed' });
         locationSelection.dataset.hasOptions = 'true';
         const restoreValue = restore ? JSON.stringify(oldLocation) : '';
         options.forEach(x => {
@@ -689,14 +763,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function applyLocation(selectedEquipment='') {
         facility.value = ''; mappedFacility.value = ''; floor.value = ''; room.value = '';
+        facilitySyncHint.textContent = '';
         if (locationSelection.value) {
             try {
                 const value = JSON.parse(locationSelection.value);
                 if (value[0] === 'external') {
                     facility.value = 'external:' + value[1];
+                    const snapshot = mrExternalFacilities.find(item => String(item.external_asset_id) === String(value[1]));
+                    facilitySyncHint.textContent = lastSynced(snapshot?.received_at);
                     mappedFacility.value = '';
                     floor.value = '';
                     room.value = '';
+                } else if (value[0] === 'unlisted') {
+                    facility.value = 'unlisted';
                 } else if (value[0] === 'local') {
                     facility.value = value[1] || '';
                     mappedFacility.value = value[1] || '';
@@ -909,7 +988,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const form=this, btn=document.getElementById('submitButton');
         btn.disabled=true;btn.textContent='Checking...';
         const fd=new FormData();
-        ['concern','room_id','equipment_id'].forEach(n=>fd.append(n,form.elements[n]?form.elements[n].value:''));
+        ['report_csrf','concern','room_id','equipment_id'].forEach(n=>fd.append(n,form.elements[n]?form.elements[n].value:''));
         fetch(window.location.pathname+'?check_duplicate=1',{method:'POST',body:fd,credentials:'same-origin'})
             .then(r=>r.json()).catch(()=>({duplicate:false,check_failed:true}))
             .then(res=>{
@@ -925,7 +1004,6 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.dupChecked='1';
             btn.disabled=true;btn.textContent='Submitting...';
             document.getElementById('loadingOverlay').hidden=false;
-            window.AppToast.queue('Request submitted successfully.');
             form.submit();
         }
         document.getElementById('duplicateProceed').onclick=function(){document.getElementById('duplicateModal').hidden=true;document.getElementById('confirmDuplicate').value='1';sendForm();};

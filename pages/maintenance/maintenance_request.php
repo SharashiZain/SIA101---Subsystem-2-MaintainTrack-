@@ -11,7 +11,8 @@ function mpApi(string $method, string $endpoint, ?array $payload = null, array $
     $key = defined('SUPABASE_SECRET_KEY') ? (string)SUPABASE_SECRET_KEY : '';
     if ($base === '' || $key === '' || !function_exists('curl_init')) return ['success'=>false,'data'=>null,'error'=>'Supabase configuration or PHP cURL is unavailable.'];
     $ch = curl_init(rtrim($base,'/').'/rest/v1/'.ltrim($endpoint,'/'));
-    $headers = ['apikey: '.$key,'Authorization: Bearer '.$key,'Accept: application/json','Content-Type: application/json'];
+    $headers = ['apikey: '.$key,'Accept: application/json','Content-Type: application/json'];
+    if (!str_starts_with($key,'sb_secret_')) $headers[]='Authorization: Bearer '.$key;
     foreach ($extraHeaders as $h) $headers[] = $h;
     curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CUSTOMREQUEST=>strtoupper($method),CURLOPT_HTTPHEADER=>$headers,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>30]);
     if ($payload !== null) curl_setopt($ch,CURLOPT_POSTFIELDS,json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
@@ -82,7 +83,7 @@ if ($pageError==='' && $requestId==='') $pageError='Missing request ID. Please o
 if ($pageError==='') {
     // Only send the value to the uuid column when it really is a UUID; otherwise match on display_id.
     $lookupColumn = mpIsUuid($requestId) ? 'request_id' : 'display_id';
-    $rr=mpApi('GET','maintenance_requests?'.$lookupColumn.'=eq.'.rawurlencode($requestId).'&select=request_id,display_id,concern,description,category,equipment_category,priority,status,facility_id,floor_id,room_id,equipment_id,specific_area,reported_by,assigned_to,image_path,date_reported,date_assigned,date_started,date_completed,created_at&limit=1');
+    $rr=mpApi('GET','maintenance_requests?'.$lookupColumn.'=eq.'.rawurlencode($requestId).'&select=request_id,display_id,concern,description,category,equipment_category,priority,status,facility_id,floor_id,room_id,equipment_id,specific_area,reported_by,assigned_to,image_path,date_reported,date_assigned,date_started,date_completed,created_at,external_facility_id,external_facility_name,external_equipment_id,external_equipment_name,asset_review_required&limit=1');
     if (!$rr['success']) {
         $pageError='Unable to load request. '.($rr['error']??'');
     } elseif (empty($rr['data'][0])) {
@@ -188,12 +189,65 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && $pageError==='' && ($_POST['form_acti
     }
 }
 
+$updateCsrf = $_SESSION['maintenance_update_csrf'] ??= bin2hex(random_bytes(32));
+$operationId = (string)($_POST['update_operation']??'');
+if (!mpIsUuid($operationId)) $operationId = vsprintf('%s%s-%s-%s-%s-%s%s%s',str_split(bin2hex(random_bytes(16)),4));
+$linkedAssetId = (string)($request['external_equipment_id']??$request['external_facility_id']??'');
+$linkedAsset = null;
+$evidenceRows = [];
+if ($request && $linkedAssetId!=='' && empty($request['asset_review_required'])) {
+    $entity = empty($request['external_equipment_id']) ? 'facility' : 'equipment';
+    $snapshot = mpApi('GET','external_asset_snapshots?select=payload,source_updated_at&deleted_at=is.null&external_system=eq.LifeCycleTrack'
+        .'&entity_type=eq.'.$entity.'&external_asset_id=eq.'.rawurlencode($linkedAssetId).'&limit=1');
+    $linkedAsset = $snapshot['data'][0]??null;
+    $payload = $linkedAsset['payload']??[];
+    if (!empty($payload['disposed_at']) || strtolower((string)($payload['lifecycle_status']??''))==='disposed') $linkedAsset=null;
+    $evidence = mpApi('GET','maintenance_asset_evidence?select=payload&request_id=eq.'.rawurlencode($requestId)
+        .'&asset_id=eq.'.rawurlencode($linkedAssetId).'&entity_type=eq.'.$entity.'&limit=1');
+    $body = $evidence['data'][0]['payload']??null;
+    if (is_array($body) && $linkedAsset) {
+        if (!empty($body['condition'])) $evidenceRows[]=['Current condition','',(string)$body['condition']];
+        foreach (['conditions'=>'Condition history','outcomes'=>'Repair outcome','anomalies'=>'Reviewed anomaly'] as $key=>$label) {
+            foreach ($body[$key]??[] as $item) {
+                if (is_array($item)) $evidenceRows[]=[$label,(string)($item['at']??''),(string)($item['label']??'')];
+            }
+        }
+    }
+}
+if (isset($_GET['evidence_csv'])) {
+    if (!$request || $pageError!=='') {
+        http_response_code(403);
+        exit('This task is unavailable.');
+    }
+    if (!$evidenceRows) {
+        http_response_code(404);
+        exit('Asset evidence is pending.');
+    }
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="maintenance-evidence.csv"');
+    header('Cache-Control: no-store');
+    $csv=fopen('php://output','w');
+    fputcsv($csv,['Evidence','Date','Details'],',','"','');
+    foreach ($evidenceRows as $row) {
+        $safe=array_map(static fn(string $cell): string => preg_match('/^[\s\x00-\x1f]*[=+\-@]|^[\t\r\n]/u',$cell) ? "'".$cell : $cell,$row);
+        fputcsv($csv,$safe,',','"','');
+    }
+    fclose($csv);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD']==='POST' && $pageError==='' && ($_POST['form_action']??'update')==='update') {
     $status=trim((string)($_POST['update_status']??''));
     $title=trim((string)($_POST['update_title']??''));
     $description=trim((string)($_POST['update_description']??''));
     $allowed=['In Progress','Completed','Fail to Fix'];
-    if (!in_array($status,$allowed,true) || $title==='' || $description==='') $pageError='Please select a status and enter both the update title and description.';
+    $observation=trim((string)($_POST['observed_condition']??''));
+    $observedVersion=(string)($_POST['observed_asset_version']??'');
+    if (!hash_equals($updateCsrf,(string)($_POST['update_csrf']??''))) $pageError='Reload the task and try again.';
+    else if (!in_array($status,$allowed,true) || $title==='' || $description==='') $pageError='Please select a status and enter both the update title and description.';
+    if ($pageError==='' && $observation!=='' && (!in_array($observation,['Good','Fair','Poor'],true) || strtotime($observedVersion)===false)) {
+        $pageError='Select a valid condition for the linked asset.';
+    }
     $photoPath=null;
     if ($pageError==='' && isset($_FILES['update_photo']) && $_FILES['update_photo']['error']!==UPLOAD_ERR_NO_FILE) {
         $file=$_FILES['update_photo'];
@@ -213,24 +267,17 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && $pageError==='' && ($_POST['form_acti
         }
     }
     if ($pageError==='') {
-        // The migration adds Fail to Fix to the request_status enum so the chosen status is stored directly.
-        $requestStatus=$status;
-        $patch=['status'=>$requestStatus];
-        if ($requestStatus==='In Progress' && empty($request['date_started'])) $patch['date_started']=date('c');
-        if ($requestStatus==='Completed') $patch['date_completed']=date('c');
-        $savedStatus=mpApi('PATCH','maintenance_requests?request_id=eq.'.rawurlencode($requestId).'&assigned_to=eq.'.rawurlencode($currentUserId),$patch,['Prefer: return=representation']);
-        if (!$savedStatus['success'] || empty($savedStatus['data'])) $pageError='Unable to update request status. '.($savedStatus['error']??'No matching assigned request was updated.');
+        $saved=mpApi('POST','rpc/maintain_save_worker_update',[
+            'p_request'=>$requestId,'p_worker'=>$currentUserId,'p_operation'=>$operationId,
+            'p_status'=>$status,'p_title'=>$title,'p_note'=>$description,'p_photo'=>$photoPath,
+            'p_observation'=>$observation!==''?$observation:null,
+            'p_asset_version'=>$observation!==''?$observedVersion:null,
+        ]);
+        if (!$saved['success'] || empty($saved['data']['update_id'])) $pageError='Unable to save the maintenance update. '.($saved['error']??'Please try again.');
         else {
-            $updateText=$description;
-            $insert=mpApi('POST','maintenance_updates',['request_id'=>$requestId,'author_user_id'=>$currentUserId,'title'=>$title,'status'=>$status,'update_text'=>$updateText,'photo_path'=>$photoPath],['Prefer: return=representation']);
-            if (!$insert['success']) $pageError='The request status was updated, but saving the update log failed: '.($insert['error']??'');
-            else {
-                mpApi('POST','request_timeline',['request_id'=>$requestId,'status'=>$requestStatus,'actor_user_id'=>$currentUserId,'note'=>mb_substr($status.': '.$title,0,255)],['Prefer: return=minimal']);
-                $mpName=(string)($_SESSION['full_name']??$_SESSION['username']??'Maintenance Personnel');
-                mpApi('POST','activity_log',['action_text'=>mb_substr('Request '.($request['display_id']??$requestId).' updated by '.$mpName.': '.$status.' — '.$title,0,255),'related_request_id'=>$requestId,'actor_user_id'=>$currentUserId],['Prefer: return=minimal']);
-                $_SESSION['maintenance_request_flash']='Maintenance update saved successfully.';
-                header('Location: maintenance_request.php?id='.rawurlencode($requestId)); exit;
-            }
+            $_SESSION['maintenance_request_flash']='Maintenance update saved successfully.';
+            header('Location: maintenance_request.php?id='.rawurlencode($requestId),true,303);
+            exit;
         }
     }
     // Keep the update modal open with the error, so the user does not lose what they typed.
@@ -393,6 +440,18 @@ renderHead('Request Details', 'Request.css', 'maintenance');
               <div class="mp-detail-field"><span>Requested By</span><strong><?=mpText($lookups['reporter']??'—')?></strong></div>
               <div class="mp-detail-field"><span>Date Reported</span><strong><?=mpText(!empty($request['date_reported'])?date('M j, Y g:i A',strtotime($request['date_reported'])):'—')?></strong></div>
               <div class="mp-detail-field mp-detail-wide"><span>Reported Description</span><p><?=nl2br(mpText($request['description']??'No description provided.'))?></p></div>
+              <?php if ($linkedAssetId!==''): ?>
+                  <div class="mp-detail-field mp-detail-wide">
+                      <span>LifeCycleTrack asset evidence</span>
+                      <strong><?=mpText($request['external_equipment_name']??$request['external_facility_name']??'Linked asset')?></strong>
+                      <?php if ($evidenceRows): ?>
+                          <ul><?php foreach ($evidenceRows as [$label,$at,$detail]): ?>
+                              <li><?=mpText($label)?><?= $at!==''?' · '.mpText($at):'' ?> · <?=mpText($detail)?></li>
+                          <?php endforeach; ?></ul>
+                          <a href="?id=<?=rawurlencode($requestId)?>&amp;evidence_csv=1">Export evidence as CSV</a>
+                      <?php else: ?><p>Asset evidence is pending.</p><?php endif; ?>
+                  </div>
+              <?php endif; ?>
             </div>
           </section>
 
@@ -446,6 +505,18 @@ renderHead('Request Details', 'Request.css', 'maintenance');
           <input type="hidden" name="form_action" value="update">
           <label class="mp-label" for="updateStatus">Status <span>*</span></label>
           <select id="updateStatus" name="update_status" required><option value="">Select status</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option><option value="Fail to Fix">Fail to Fix</option></select>
+          <input type="hidden" name="update_csrf" value="<?=mpText($updateCsrf)?>">
+          <input type="hidden" name="update_operation" value="<?=mpText($operationId)?>">
+          <?php if ($linkedAsset): ?>
+              <label for="observedCondition">Observed LifeCycleTrack condition (optional)</label>
+              <select id="observedCondition" name="observed_condition">
+                  <option value="">No new observation</option>
+                  <?php foreach (['Good','Fair','Poor'] as $condition): ?>
+                      <option value="<?=mpText($condition)?>" <?=($_POST['observed_condition']??'')===$condition?'selected':''?>><?=mpText($condition)?></option>
+                  <?php endforeach; ?>
+              </select>
+              <input type="hidden" name="observed_asset_version" value="<?=mpText($_POST['observed_asset_version']??$linkedAsset['source_updated_at'])?>">
+          <?php endif; ?>
           <label class="mp-label" for="updateTitle">Title <span>*</span></label>
           <input id="updateTitle" name="update_title" type="text" maxlength="200" required value="<?=mpText($request['concern']??'')?>" placeholder="e.g. Replaced damaged power cable">
           <label class="mp-label" for="updateDescription">Description <span>*</span></label>

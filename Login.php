@@ -85,7 +85,7 @@ if ($loginValue === '' || $password === '') {
 }
 
 if (!defined('SUPABASE_URL') || !defined('SUPABASE_ANON_KEY') || !defined('SUPABASE_SECRET_KEY')
-    || trim((string) SUPABASE_SECRET_KEY) === '') {
+    || SUPABASE_URL === '' || SUPABASE_ANON_KEY === '' || SUPABASE_SECRET_KEY === '') {
     $_SESSION['login_error'] = 'Login service is not configured. Please contact the administrator.';
     loginRedirect('Index.php');
 }
@@ -93,6 +93,8 @@ if (!defined('SUPABASE_URL') || !defined('SUPABASE_ANON_KEY') || !defined('SUPAB
 $baseUrl = rtrim(SUPABASE_URL, '/');
 $anonKey = SUPABASE_ANON_KEY;
 $secretKey = SUPABASE_SECRET_KEY;
+$profileHeaders = ['apikey: ' . $secretKey,'Accept: application/json'];
+if (!str_starts_with($secretKey,'sb_secret_')) $profileHeaders[] = 'Authorization: Bearer ' . $secretKey;
 
 /*
  * Resolve a username to its email. If the user typed an email, use it directly.
@@ -104,11 +106,7 @@ if (!filter_var($loginValue, FILTER_VALIDATE_EMAIL)) {
     $lookupUrl = $baseUrl . '/rest/v1/users?username=eq.' . rawurlencode($loginValue)
         . '&select=email&limit=1';
 
-    $lookup = loginRequest($lookupUrl, 'GET', [
-        'apikey: ' . $secretKey,
-        'Authorization: Bearer ' . $secretKey,
-        'Accept: application/json',
-    ]);
+    $lookup = loginRequest($lookupUrl, 'GET', $profileHeaders);
 
     if (!$lookup['ok'] || !is_array($lookup['data']) || empty($lookup['data'][0]['email'])) {
         $_SESSION['login_error'] = 'Invalid username or password.';
@@ -140,11 +138,7 @@ $authenticatedEmail = (string) ($auth['data']['user']['email'] ?? $email);
 $profileUrl = $baseUrl . '/rest/v1/users?email=eq.' . rawurlencode($authenticatedEmail)
     . '&select=user_id,auth_user_id,display_id,full_name,username,email,role,status&limit=1';
 
-$profileResult = loginRequest($profileUrl, 'GET', [
-    'apikey: ' . $secretKey,
-    'Authorization: Bearer ' . $secretKey,
-    'Accept: application/json',
-]);
+$profileResult = loginRequest($profileUrl, 'GET', $profileHeaders);
 
 if (!$profileResult['ok'] || !is_array($profileResult['data']) || empty($profileResult['data'][0])) {
     $_SESSION['login_error'] = 'Your login succeeded, but your MaintainTrack profile was not found. Contact the administrator.';
@@ -183,13 +177,9 @@ if (!isset($dashboardMap[$role])) {
 /* Link the database profile to the verified Supabase Auth UID if not linked yet. */
 if ($linkedAuthId === '') {
     $patchUrl = $baseUrl . '/rest/v1/users?user_id=eq.' . rawurlencode((string) $profile['user_id']);
-    $patch = loginRequest($patchUrl, 'PATCH', [
-        'apikey: ' . $secretKey,
-        'Authorization: Bearer ' . $secretKey,
-        'Content-Type: application/json',
-        'Accept: application/json',
-        'Prefer: return=minimal',
-    ], [
+    $patch = loginRequest($patchUrl, 'PATCH', array_merge($profileHeaders,[
+        'Content-Type: application/json','Prefer: return=minimal',
+    ]), [
         'auth_user_id' => $authUserId,
     ]);
 
