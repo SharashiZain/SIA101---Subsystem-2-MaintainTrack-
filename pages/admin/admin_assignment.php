@@ -99,9 +99,9 @@ function assignmentLifecycleAppUrl(): string {
     $base = rtrim(maintaintrack_env('LIFECYCLETRACK_APP_URL'), '/');
     if ($base !== '') return $base;
     $runtimePort = (int)(assignmentConditionRuntime()['ports']['lifecycle'] ?? 0);
-    if ($runtimePort > 0) return 'http://127.0.0.1:' . $runtimePort;
+    if ($runtimePort > 0) return 'http://192.168.137.216:' . $runtimePort;
     return strtolower(trim((string) getenv('LOCAL_STAGING_ALLOW_HTTP'))) === 'true'
-        ? 'http://127.0.0.1:8082'
+        ? 'http://192.168.137.216:443'
         : '';
 }
 
@@ -116,9 +116,9 @@ function assignmentConditionHandoffToken(string $entity, string $assetId, string
     $adminId = trim((string) ($_SESSION['user_id'] ?? ''));
     $returnUrl = maintaintrack_env('MAINTAINTRACK_ADMIN_RETURN_URL');
     $runtimePort = (int)(assignmentConditionRuntime()['ports']['maintain'] ?? 0);
-    if ($returnUrl === '' && $runtimePort > 0) $returnUrl = 'http://127.0.0.1:' . $runtimePort . '/pages/admin/admin_assignment.php';
+    if ($returnUrl === '' && $runtimePort > 0) $returnUrl = 'http://192.168.137.216:' . $runtimePort . '/pages/admin/admin_assignment.php';
     if ($returnUrl === '' && strtolower(trim((string) getenv('LOCAL_STAGING_ALLOW_HTTP'))) === 'true') {
-        $returnUrl = 'http://127.0.0.1:8083/pages/admin/admin_assignment.php';
+        $returnUrl = 'http://192.168.137.216:443/pages/admin/admin_assignment.php';
     }
     if ($secret === '' || !assignmentUuid($adminId) || !assignmentUuid($requestId)
         || !assignmentUuid($generation) || $returnUrl === '') return '';
