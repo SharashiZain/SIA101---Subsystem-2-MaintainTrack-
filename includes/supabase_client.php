@@ -1,35 +1,39 @@
 <?php
 declare(strict_types=1);
 
+function maintaintrack_env(string $name, string $default = ''): string
+{
+    static $envValues = null;
+    if ($envValues === null) {
+        $envValues = [];
+        $envPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
+        if (is_readable($envPath)) {
+            $parsedValues = parse_ini_file($envPath, false, INI_SCANNER_RAW);
+            if (is_array($parsedValues)) $envValues = $parsedValues;
+        }
+    }
+
+    $processValue = getenv($name);
+    if ($processValue !== false && trim($processValue) !== '') return trim($processValue);
+    return trim((string) ($envValues[$name] ?? $default));
+}
+
 /**
  * Supabase Configuration
  * Project: MaintainTrack / SIA
  * Region: Singapore
  */
 
-$maintainTrackEnvValues = [];
-$maintainTrackEnvPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
-if (is_readable($maintainTrackEnvPath)) {
-    $parsedMaintainTrackEnv = parse_ini_file($maintainTrackEnvPath, false, INI_SCANNER_RAW);
-    if (is_array($parsedMaintainTrackEnv)) $maintainTrackEnvValues = $parsedMaintainTrackEnv;
-}
-
-$maintainTrackConfigValue = static function (string $name, string $default = '') use (&$maintainTrackEnvValues): string {
-    $processValue = getenv($name);
-    if ($processValue !== false && trim($processValue) !== '') return trim($processValue);
-    return trim((string) ($maintainTrackEnvValues[$name] ?? $default));
-};
-
-define('SUPABASE_URL', $maintainTrackConfigValue('MAINTAINTRACK_SUPABASE_URL', 'https://etlpwxatuklwiesohoeo.supabase.co'));
+define('SUPABASE_URL', maintaintrack_env('MAINTAINTRACK_SUPABASE_URL', 'https://etlpwxatuklwiesohoeo.supabase.co'));
 
 define(
     'SUPABASE_ANON_KEY',
-    $maintainTrackConfigValue('MAINTAINTRACK_SUPABASE_ANON_KEY', 'sb_publishable_WuzMZ48r7XY-0fw0qyIywA_qr1e-6lS')
+    maintaintrack_env('MAINTAINTRACK_SUPABASE_ANON_KEY', 'sb_publishable_WuzMZ48r7XY-0fw0qyIywA_qr1e-6lS')
 );
 
 define(
     'SUPABASE_SECRET_KEY',
-    $maintainTrackConfigValue('MAINTAINTRACK_SUPABASE_SECRET_KEY')
+    maintaintrack_env('MAINTAINTRACK_SUPABASE_SECRET_KEY')
 );
 
 define('SUPABASE_STORAGE_BUCKET', 'report-images');
