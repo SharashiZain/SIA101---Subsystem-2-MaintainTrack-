@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+function maintaintrack_env(string $name, string $default = ''): string
+{
+    static $envValues = null;
+    if ($envValues === null) {
+        $envValues = [];
+        $envPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
+        if (is_readable($envPath)) {
+            $parsedValues = parse_ini_file($envPath, false, INI_SCANNER_RAW);
+            if (is_array($parsedValues)) $envValues = $parsedValues;
+        }
+    }
+
+    $processValue = getenv($name);
+    if ($processValue !== false && trim($processValue) !== '') return trim($processValue);
+    return trim((string) ($envValues[$name] ?? $default));
+}
+
 /**
  * Supabase Configuration
  * Project: MaintainTrack / SIA
