@@ -28,7 +28,8 @@ function assignmentSupabase(string $endpoint, string $method = 'GET', ?array $da
         return ['success' => false, 'status' => 0, 'data' => null, 'error' => 'Invalid API endpoint.'];
     }
 
-    $headers = ['apikey: ' . $secret, 'Authorization: Bearer ' . $secret, 'Accept: application/json', 'Content-Type: application/json', 'Prefer: return=representation'];
+    $headers = ['apikey: ' . $secret, 'Accept: application/json', 'Content-Type: application/json', 'Prefer: return=representation'];
+    if (!str_starts_with($secret, 'sb_secret_')) $headers[] = 'Authorization: Bearer ' . $secret;
     $options = [CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => strtoupper($method), CURLOPT_HTTPHEADER => $headers, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 30];
 
     if ($data !== null) {
@@ -95,7 +96,7 @@ function assignmentConditionRuntime(): array {
 }
 
 function assignmentLifecycleAppUrl(): string {
-    $base = rtrim(trim((string) (getenv('LIFECYCLETRACK_APP_URL') ?: '')), '/');
+    $base = rtrim(maintaintrack_env('LIFECYCLETRACK_APP_URL'), '/');
     if ($base !== '') return $base;
     $runtimePort = (int)(assignmentConditionRuntime()['ports']['lifecycle'] ?? 0);
     if ($runtimePort > 0) return 'http://127.0.0.1:' . $runtimePort;
@@ -105,21 +106,22 @@ function assignmentLifecycleAppUrl(): string {
 }
 
 function assignmentConditionSecret(): string {
-    $secret = trim((string) (getenv('MAINTAINTRACK_CONDITION_HMAC_SECRET') ?: ''));
+    $secret = maintaintrack_env('MAINTAINTRACK_CONDITION_HMAC_SECRET');
     if ($secret !== '') return $secret;
     return trim((string)(assignmentConditionRuntime()['api_tokens']['MAINTAINTRACK_CONDITION_HMAC_SECRET'] ?? ''));
 }
 
-function assignmentConditionHandoffToken(string $entity, string $assetId, string $requestId, string $requestReference = ''): string {
+function assignmentConditionHandoffToken(string $entity, string $assetId, string $requestId, string $requestReference, string $generation): string {
     $secret = assignmentConditionSecret();
     $adminId = trim((string) ($_SESSION['user_id'] ?? ''));
-    $returnUrl = trim((string) (getenv('MAINTAINTRACK_ADMIN_RETURN_URL') ?: ''));
+    $returnUrl = maintaintrack_env('MAINTAINTRACK_ADMIN_RETURN_URL');
     $runtimePort = (int)(assignmentConditionRuntime()['ports']['maintain'] ?? 0);
     if ($returnUrl === '' && $runtimePort > 0) $returnUrl = 'http://127.0.0.1:' . $runtimePort . '/pages/admin/admin_assignment.php';
     if ($returnUrl === '' && strtolower(trim((string) getenv('LOCAL_STAGING_ALLOW_HTTP'))) === 'true') {
         $returnUrl = 'http://127.0.0.1:8083/pages/admin/admin_assignment.php';
     }
-    if ($secret === '' || !preg_match('/^[0-9a-f-]{36}$/i', $adminId) || $requestId === '' || $returnUrl === '') return '';
+    if ($secret === '' || !assignmentUuid($adminId) || !assignmentUuid($requestId)
+        || !assignmentUuid($generation) || $returnUrl === '') return '';
 
     $now = time();
     $jtiBytes = random_bytes(16);
@@ -130,6 +132,7 @@ function assignmentConditionHandoffToken(string $entity, string $assetId, string
     $claims = [
         'v' => 1, 'iss' => 'MaintainTrack', 'aud' => 'LifeCycleTrack',
         'entity' => $entity, 'asset_id' => $assetId, 'request_id' => $requestId,
+        'link_generation' => $generation,
         'request_reference' => $requestReference !== '' ? $requestReference : $requestId,
         'admin_user_id' => $adminId,
         'admin_username' => substr((string) ($_SESSION['username'] ?? $_SESSION['user'] ?? 'Admin'), 0, 80),
@@ -141,7 +144,7 @@ function assignmentConditionHandoffToken(string $entity, string $assetId, string
     return $encoded . '.' . hash_hmac('sha256', $encoded, $secret);
 }
 
-function assignmentLifecycleConditionUrl(string $equipmentId, string $facilityId, string $requestId, string $requestReference = ''): string {
+function assignmentLifecycleConditionUrl(string $equipmentId, string $facilityId, string $requestId, string $requestReference, string $generation): string {
     $base = assignmentLifecycleAppUrl();
     if ($base === '') return '';
     if ($equipmentId !== '' && ctype_digit($equipmentId)) {
@@ -149,16 +152,8 @@ function assignmentLifecycleConditionUrl(string $equipmentId, string $facilityId
     } elseif ($facilityId !== '' && ctype_digit($facilityId)) {
         $entity = 'facility'; $assetId = $facilityId;
     } else return '';
-    $token = assignmentConditionHandoffToken($entity, $assetId, $requestId, $requestReference);
+    $token = assignmentConditionHandoffToken($entity, $assetId, $requestId, $requestReference, $generation);
     return $token !== '' ? $base . '/main/maintaintrack_condition.php?token=' . rawurlencode($token) : '';
-}
-
-function assignmentConditionReceipt(string $requestId, string $entity, string $assetId): ?array {
-    $receipt = $_SESSION['lifecycle_condition_receipts'][$requestId] ?? null;
-    if (!is_array($receipt) || (int)($receipt['expires_at'] ?? 0) < time()
-        || ($receipt['entity'] ?? '') !== $entity || (string)($receipt['asset_id'] ?? '') !== $assetId
-        || (string)($receipt['admin_user_id'] ?? '') !== (string)($_SESSION['user_id'] ?? '')) return null;
-    return $receipt;
 }
 
 function assignmentAcceptConditionReceipt(): void {
@@ -174,19 +169,46 @@ function assignmentAcceptConditionReceipt(): void {
     if (!is_array($claims) || ($claims['iss'] ?? '') !== 'LifeCycleTrack' || ($claims['aud'] ?? '') !== 'MaintainTrack'
         || (int)($claims['exp'] ?? 0) < time() || !assignmentUuid((string)($claims['request_id'] ?? ''))
         || !assignmentUuid((string)($claims['admin_user_id'] ?? ''))
+        || !assignmentUuid((string)($claims['assessment_reference'] ?? ''))
+        || !assignmentUuid((string)($claims['link_generation'] ?? ''))
         || !in_array(($claims['entity'] ?? ''), ['equipment','facility'], true)
         || !ctype_digit((string)($claims['asset_id'] ?? ''))
         || (string)$claims['admin_user_id'] !== (string)($_SESSION['user_id'] ?? '')
         || !assignmentIsAdmin()) return;
-    $_SESSION['lifecycle_condition_receipts'][(string)$claims['request_id']] = [
-        'entity'=>(string)$claims['entity'], 'asset_id'=>(string)$claims['asset_id'],
-        'admin_user_id'=>(string)$claims['admin_user_id'], 'expires_at'=>(int)$claims['exp'],
-    ];
+    $saved = assignmentSupabase('/rest/v1/rpc/maintain_confirm_report_assessment','POST',[
+        'p_request'=>$claims['request_id'], 'p_admin'=>$claims['admin_user_id'],
+        'p_entity'=>$claims['entity'], 'p_asset'=>$claims['asset_id'],
+        'p_link_generation'=>$claims['link_generation'], 'p_assessment'=>$claims['assessment_reference'],
+    ]);
+    if (!$saved['success'] || $saved['data'] !== true) {
+        $_SESSION['assignment_asset_review_error']='The assessment could not be linked. Open a new assessment from this request.';
+    }
     header('Location: ' . strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?'), true, 303);
     exit;
 }
 
 assignmentAcceptConditionReceipt();
+
+$_SESSION['assignment_asset_review_csrf'] ??= bin2hex(random_bytes(32));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_report_asset'])) {
+    if (!assignmentIsAdmin() || !hash_equals($_SESSION['assignment_asset_review_csrf'],(string)($_POST['csrf']??''))) {
+        assignmentJson(['success'=>false,'message'=>'Unauthorized. Reload Assignments and try again.'],403);
+    }
+    $reviewId = (string)($_POST['request_id']??'');
+    $reviewFacility = trim((string)($_POST['review_facility']??''));
+    $reviewEquipment = trim((string)($_POST['review_equipment']??''));
+    if (!assignmentUuid($reviewId) || !ctype_digit($reviewFacility) || ($reviewEquipment!=='' && !ctype_digit($reviewEquipment))) {
+        $_SESSION['assignment_asset_review_error']='Select a saved LifeCycleTrack facility and optional equipment.';
+    } else {
+        $review = assignmentSupabase('/rest/v1/rpc/maintain_confirm_report_asset','POST',[
+            'p_request'=>$reviewId, 'p_admin'=>$_SESSION['user_id'], 'p_facility'=>$reviewFacility,
+            'p_equipment'=>$reviewEquipment!==''?$reviewEquipment:null,
+        ]);
+        if (!$review['success']) $_SESSION['assignment_asset_review_error']=$review['error']??'The asset could not be confirmed.';
+    }
+    header('Location: ' . strtok((string)$_SERVER['REQUEST_URI'],'?'), true, 303);
+    exit;
+}
 
 // JSON API for assignment action. The secret key is used only by this server-side PHP file.
 if (isset($_GET['assignment_api']) || isset($_POST['assignment_api'])) {
@@ -195,6 +217,9 @@ if (isset($_GET['assignment_api']) || isset($_POST['assignment_api'])) {
     $action = (string) ($_POST['action'] ?? $_GET['action'] ?? 'list');
 
     if ($action === 'assign') {
+        if ($_SERVER['REQUEST_METHOD']!=='POST' || !hash_equals($_SESSION['assignment_asset_review_csrf'],(string)($_POST['csrf']??''))) {
+            assignmentJson(['success'=>false,'message'=>'Reload Assignments to continue.'],403);
+        }
         $requestId = trim((string) ($_POST['request_id'] ?? ''));
         $notes     = trim((string) ($_POST['notes'] ?? ''));
         $allowAny  = (string) ($_POST['allow_any'] ?? '') === '1';
@@ -230,7 +255,7 @@ if (isset($_GET['assignment_api']) || isset($_POST['assignment_api'])) {
             $selected[] = $p;
         }
 
-        $requestLookup = assignmentSupabase('/rest/v1/maintenance_requests?request_id=eq.' . rawurlencode($requestId) . '&select=request_id,display_id,concern,status,assigned_to,approval_status,category,equipment_category,external_equipment_id,external_facility_id&limit=1');
+        $requestLookup = assignmentSupabase('/rest/v1/maintenance_requests?request_id=eq.' . rawurlencode($requestId) . '&select=request_id,display_id,concern,status,assigned_to,approval_status,category,equipment_category,external_equipment_id,external_facility_id,asset_review_required,lifecycle_assessment_reference&limit=1');
         $request = is_array($requestLookup['data'] ?? null) ? ($requestLookup['data'][0] ?? null) : null;
         if (!$requestLookup['success'] || !$request) assignmentJson(['success' => false, 'message' => 'Request not found. Refresh the page and try again.'], 404);
         if (!assignmentStatusOpen((string) ($request['status'] ?? ''))) assignmentJson(['success' => false, 'message' => 'Completed or closed requests cannot be assigned.'], 409);
@@ -242,11 +267,11 @@ if (isset($_GET['assignment_api']) || isset($_POST['assignment_api'])) {
 
         $externalEquipmentId = trim((string)($request['external_equipment_id'] ?? ''));
         $externalFacilityId = trim((string)($request['external_facility_id'] ?? ''));
+        if (!empty($request['asset_review_required'])) {
+            assignmentJson(['success'=>false,'message'=>'Confirm the reported asset before assigning this request.'],409);
+        }
         if ($externalEquipmentId !== '' || $externalFacilityId !== '') {
-            $requiredEntity = $externalEquipmentId !== '' ? 'equipment' : 'facility';
-            $requiredAssetId = $externalEquipmentId !== '' ? $externalEquipmentId : $externalFacilityId;
-            if (!ctype_digit($requiredAssetId)
-                || assignmentConditionReceipt($requestId, $requiredEntity, $requiredAssetId) === null) {
+            if (empty($request['lifecycle_assessment_reference'])) {
                 assignmentJson(['success'=>false,'message'=>'Update and save the linked LifeCycleTrack condition first. Return to Assignments from the assessment page before assigning this request.'], 409);
             }
         }
@@ -277,12 +302,21 @@ if (isset($_GET['assignment_api']) || isset($_POST['assignment_api'])) {
             assignmentJson(['success' => false, 'message' => 'A valid Admin account is required to assign a request.'], 403);
         }
 
-        $assign = assignmentSupabase('/rest/v1/rpc/assign_maintenance_request_with_notifications', 'POST', [
+        $schedule = [];
+        foreach (['scheduled_start'=>'p_start','scheduled_end'=>'p_end'] as $field=>$parameter) {
+            $value=trim((string)($_POST[$field]??''));
+            $date=$value!=='' ? DateTimeImmutable::createFromFormat('!Y-m-d\TH:i',$value,new DateTimeZone('Asia/Manila')) : null;
+            if ($value!=='' && (!$date || $date->format('Y-m-d\TH:i')!==$value)) {
+                assignmentJson(['success'=>false,'message'=>'Enter valid schedule dates.'],422);
+            }
+            $schedule[$parameter]=$date?->format(DATE_ATOM);
+        }
+        $assign = assignmentSupabase('/rest/v1/rpc/maintain_schedule_and_assign', 'POST', [
             'p_request_id' => $requestId,
             'p_staff_ids' => array_map(fn($p) => (string) $p['user_id'], $newPeople),
             'p_assigned_by' => $actor,
             'p_notes' => $notes !== '' ? $notes : null,
-        ]);
+        ]+$schedule);
         $assignData = $assign['data'] ?? null;
         if (!$assign['success'] || !is_array($assignData) || ($assignData['assigned'] ?? false) !== true) {
             assignmentJson([
@@ -323,7 +357,9 @@ if (isset($_GET['assignment_api']) || isset($_POST['assignment_api'])) {
 
 $staff = [];
 $unassigned = [];
-$pageError = '';
+$pageError = (string)($_SESSION['assignment_asset_review_error']??'');
+unset($_SESSION['assignment_asset_review_error']);
+$reviewFacilities = [];
 
 if (!assignmentIsAdmin()) {
     http_response_code(403);
@@ -333,7 +369,7 @@ if (!assignmentIsAdmin()) {
 
     // Show only secretary-approved, genuinely unassigned requests.
     // Rejected requests are excluded from the assignment queue.
-        $requestsResult = assignmentSupabase('/rest/v1/maintenance_requests?select=request_id,display_id,concern,description,status,priority,category,equipment_category,assigned_to,approval_status,date_reported,created_at,facility_id,specific_area,equipment_id,external_facility_id,external_facility_name,external_equipment_id,external_equipment_name&approval_status=eq.Approved&assigned_to=is.null&status=not.in.(Completed,Rejected)&order=date_reported.asc');
+        $requestsResult = assignmentSupabase('/rest/v1/maintenance_requests?select=request_id,display_id,concern,description,status,priority,category,equipment_category,assigned_to,approval_status,date_reported,created_at,facility_id,specific_area,equipment_id,external_facility_id,external_facility_name,external_equipment_id,external_equipment_name,reported_floor,reported_location,reported_equipment,asset_review_required,lifecycle_assessment_reference,asset_link_generation&approval_status=eq.Approved&assigned_to=is.null&status=not.in.(Completed,Rejected)&order=date_reported.asc');
 
     if (!$usersResult['success']) {
         $pageError = 'Could not load maintenance personnel: ' . (string) $usersResult['error'];
@@ -344,7 +380,7 @@ if (!assignmentIsAdmin()) {
         $requestRows = is_array($requestsResult['data']) ? $requestsResult['data'] : [];
 
         // Open requests that already have a lead worker. Rejected requests are not active work.
-        $tasksResult = assignmentSupabase('/rest/v1/maintenance_requests?select=request_id,display_id,concern,status,assigned_to,date_reported,external_facility_id,external_facility_name,external_equipment_id,external_equipment_name&assigned_to=not.is.null&status=not.in.(Completed,Rejected)&order=date_reported.asc');
+        $tasksResult = assignmentSupabase('/rest/v1/maintenance_requests?select=request_id,display_id,concern,status,assigned_to,date_reported,external_facility_id,external_facility_name,external_equipment_id,external_equipment_name,asset_link_generation&assigned_to=not.is.null&status=not.in.(Completed,Rejected)&order=date_reported.asc');
         $openRequests = [];
         if ($tasksResult['success'] && is_array($tasksResult['data'])) {
             foreach ($tasksResult['data'] as $task) {
@@ -381,7 +417,7 @@ if (!assignmentIsAdmin()) {
                 'issue'      => (string) ($task['concern'] ?? 'Maintenance concern'),
                 'status'     => (string) ($task['status'] ?? 'Assigned'),
                 'external_equipment_name' => (string) ($task['external_equipment_name'] ?? ''),
-                'external_equipment_url' => assignmentLifecycleConditionUrl($taskExternalEquipmentId, $taskExternalFacilityId, (string)$rid, (string)($task['display_id'] ?? $rid)),
+                'external_equipment_url' => assignmentLifecycleConditionUrl($taskExternalEquipmentId, $taskExternalFacilityId, (string)$rid, (string)($task['display_id'] ?? $rid), (string)($task['asset_link_generation']??'')),
                 'external_facility_name' => (string) ($task['external_facility_name'] ?? ''),
             ];
         }
@@ -424,6 +460,11 @@ if (!assignmentIsAdmin()) {
             }
         }
 
+        if (array_filter($requestRows,static fn(array $row): bool => !empty($row['asset_review_required']))) {
+            $review = assignmentSupabase('/rest/v1/external_asset_snapshots?select=external_asset_id,payload&external_system=eq.LifeCycleTrack&entity_type=eq.facility&deleted_at=is.null&order=external_asset_id.asc');
+            $reviewFacilities = $review['success'] && is_array($review['data']) ? $review['data'] : [];
+        }
+
         foreach ($requestRows as $row) {
             $facilityId = (string) ($row['facility_id'] ?? '');
             $equipmentId = (string) ($row['equipment_id'] ?? '');
@@ -434,10 +475,9 @@ if (!assignmentIsAdmin()) {
             $lifecycleEquipmentName = trim((string) ($row['external_equipment_name'] ?? $externalEquipmentPayload['name'] ?? 'LifeCycleTrack equipment'));
             $requestKey = (string)($row['request_id'] ?? '');
             $requestReference = (string)($row['display_id'] ?? $requestKey);
-            $requiredEntity = $externalEquipmentId !== '' ? 'equipment' : 'facility';
-            $requiredAssetId = $externalEquipmentId !== '' ? $externalEquipmentId : $externalFacilityId;
+            $assetReviewRequired = !empty($row['asset_review_required']);
             $requiresConditionAssessment = $externalEquipmentId !== '' || $externalFacilityId !== '';
-            $lifecycleEquipmentUrl = assignmentLifecycleConditionUrl($externalEquipmentId, $externalFacilityId, $requestKey, $requestReference);
+            $lifecycleEquipmentUrl = $assetReviewRequired ? '' : assignmentLifecycleConditionUrl($externalEquipmentId, $externalFacilityId, $requestKey, $requestReference,(string)($row['asset_link_generation']??''));
 
             $unassigned[] = [
                 'request_id'         => $requestKey,
@@ -457,9 +497,11 @@ if (!assignmentIsAdmin()) {
                 'external_equipment_url' => $lifecycleEquipmentUrl,
                 'external_facility_name' => (string) ($row['external_facility_name'] ?? ''),
                 'requires_condition_assessment' => $requiresConditionAssessment,
-                'condition_assessed' => $requiresConditionAssessment && ctype_digit($requiredAssetId)
-                    ? assignmentConditionReceipt($requestKey, $requiredEntity, $requiredAssetId) !== null
-                    : !$requiresConditionAssessment,
+                'condition_assessed' => !$assetReviewRequired && (!$requiresConditionAssessment || !empty($row['lifecycle_assessment_reference'])),
+                'asset_review_required' => $assetReviewRequired,
+                'reported_location' => (string)($row['reported_location']??''),
+                'reported_equipment' => (string)($row['reported_equipment']??''),
+                'reported_floor' => (string)($row['reported_floor']??''),
                 'date'               => (string) ($row['date_reported'] ?? $row['created_at'] ?? ''),
             ];
         }
@@ -580,7 +622,34 @@ renderHead('Assignments & Personnel', 'Assignment.css');
                             <div class="unassigned-item-top"><strong><?= e($request['id']) ?></strong><span class="priority-chip priority-<?= e(strtolower((string) $request['priority'])) ?>"><?= e($request['priority']) ?></span><?php if ($isElectrical): ?><span class="priority-chip elec-chip">Electrical only</span><?php endif; ?><?php if (isset($request['score']) && $request['score'] !== null): ?><span class="priority-chip" style="background:#eef3f8;color:#12355f;border:1px solid #cfdce8;" title="<?= e($request['score_tip'] ?? '') ?>">Score <?= e(number_format((float) $request['score'], 2)) ?></span><?php endif; ?></div>
                             <h3><?= e($request['issue']) ?></h3>
                             <p class="request-subtitle"><?= e($request['location'] ?: 'Location not specified') ?><?= $request['equipment'] ? ' · ' . e($request['equipment']) : '' ?></p>
-                            <?php if ($request['requires_condition_assessment']): ?>
+                            <?php if ($request['asset_review_required']): ?>
+                                <form method="post" class="asset-review-form">
+                                    <strong>Needs asset review</strong>
+                                    <p><?= e(implode(' · ',array_filter([$request['reported_floor'],$request['reported_location'],$request['reported_equipment']]))) ?></p>
+                                    <input type="hidden" name="confirm_report_asset" value="1">
+                                    <input type="hidden" name="csrf" value="<?= e($_SESSION['assignment_asset_review_csrf']) ?>">
+                                    <input type="hidden" name="request_id" value="<?= e($request['request_id']) ?>">
+                                    <label>Saved facility
+                                        <select name="review_facility" required><option value="">Select facility</option>
+                                        <?php foreach ($reviewFacilities as $snapshot): ?>
+                                            <?php $payload=$snapshot['payload']??[]; if (strtolower((string)($payload['lifecycle_status']??''))==='disposed'||!empty($payload['disposed_at'])||empty($payload['name'])) continue; ?>
+                                            <option value="<?= e($snapshot['external_asset_id']) ?>"><?= e($payload['name']) ?></option>
+                                        <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <?php if (($request['equipment_category']??'')==='Electrical'): ?>
+                                        <label>Saved equipment
+                                            <select name="review_equipment"><option value="">Facility only</option>
+                                            <?php foreach ($externalEquipmentById as $snapshot): ?>
+                                                <?php $payload=$snapshot['payload']??[]; if (strtolower((string)($payload['lifecycle_status']??''))==='disposed'||!empty($payload['disposed_at'])||empty($payload['name'])||empty($payload['facility_id'])) continue; ?>
+                                                <option value="<?= e($snapshot['external_asset_id']) ?>" data-facility="<?= e($payload['facility_id']) ?>" hidden disabled><?= e($payload['name']) ?></option>
+                                            <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                    <?php endif; ?>
+                                    <button type="submit">Confirm asset link</button>
+                                </form>
+                            <?php elseif ($request['requires_condition_assessment']): ?>
                                 <div class="lifecycle-condition-note" style="margin:10px 0;padding:10px 12px;border:1px solid #cfe0ef;border-radius:9px;background:#f4f9fd;color:#24445f;font-size:12px;">
                                     <strong>LifeCycleTrack condition:</strong> <?= $request['external_equipment_id'] !== '' ? e($request['external_equipment_condition']) : 'Choose equipment at ' . e($request['external_facility_name'] ?: 'this facility') ?>
                                     <?php if ($request['external_equipment_url'] !== ''): ?>
@@ -588,7 +657,7 @@ renderHead('Assignments & Personnel', 'Assignment.css');
                                     <?php else: ?>
                                         <div style="margin-top:7px;color:#9b2525;">Condition link unavailable. Check the LifeCycleTrack URL and shared handoff secret configuration.</div>
                                     <?php endif; ?>
-                                    <?php if (!$request['condition_assessed']): ?><div style="margin-top:6px;color:#855b06;">Save the LifeCycleTrack assessment to enable assignment.</div><?php endif; ?>
+                                    <?php if (!$request['condition_assessed']): ?><div style="margin-top:6px;color:#855b06;">Awaiting assessment. Save the LifeCycleTrack assessment to enable assignment.</div><?php endif; ?>
                                 </div>
                             <?php endif; ?>
                             <?php if ($request['description'] !== ''): ?><p class="request-description"><?= e($request['description']) ?></p><?php endif; ?>
@@ -623,6 +692,8 @@ renderHead('Assignments & Personnel', 'Assignment.css');
                 <small id="assignSelectedCount">0 selected</small>
             </div>
             <div class="modal-field"><label for="assignNotes">Assignment notes (optional)</label><textarea id="assignNotes" rows="3" placeholder="Add instructions or notes for this assignment..."></textarea></div>
+            <div class="modal-field"><label for="scheduledStart">Scheduled start</label><input id="scheduledStart" type="datetime-local"></div>
+            <div class="modal-field"><label for="scheduledEnd">Scheduled end</label><input id="scheduledEnd" type="datetime-local"></div>
         </div>
         <div class="modal-actions"><button type="button" class="modal-cancel" id="assignModalCancel">Cancel</button><button type="button" class="modal-save" id="assignModalConfirm">Confirm Assignment</button></div>
     </div>
@@ -650,6 +721,18 @@ renderHead('Assignments & Personnel', 'Assignment.css');
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.asset-review-form').forEach(form => {
+        const facility = form.elements.review_facility;
+        const equipment = form.elements.review_equipment;
+        if (!facility || !equipment) return;
+        facility.addEventListener('change', () => {
+            equipment.value = '';
+            Array.from(equipment.options).slice(1).forEach(option => {
+                option.hidden = option.dataset.facility !== facility.value;
+                option.disabled = option.hidden;
+            });
+        });
+    });
     const staffData = <?= json_encode($staff, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
     let unassignedData = <?= json_encode($unassigned, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
@@ -922,6 +1005,8 @@ document.addEventListener('DOMContentLoaded', function () {
         $('assignModalRequestId').textContent = currentRequest.displayId;
         $('assignModalIssue').textContent = currentRequest.issue;
         assignNotes.value = '';
+        $('scheduledStart').value = '';
+        $('scheduledEnd').value = '';
         allowAnyStaff.checked = false;
         buildStaffChecks([]);
         assignConfirm.disabled = false; assignConfirm.textContent = 'Confirm Assignment';
@@ -954,6 +1039,9 @@ document.addEventListener('DOMContentLoaded', function () {
             body.set('action', 'assign');
             body.set('request_id', req.id);
             body.set('notes', assignNotes.value.trim());
+            body.set('csrf', <?=json_encode($_SESSION['assignment_asset_review_csrf'])?>);
+            body.set('scheduled_start', $('scheduledStart').value);
+            body.set('scheduled_end', $('scheduledEnd').value);
             body.set('allow_any', allowAnyStaff.checked ? '1' : '0');
             staffIds.forEach(id => body.append('staff_ids[]', id));
 

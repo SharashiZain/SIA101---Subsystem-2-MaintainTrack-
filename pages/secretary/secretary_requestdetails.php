@@ -53,7 +53,7 @@ $lookups = [
 if (!preg_match('/^MT-\d+$/', $requestId)) {
     $pageError = 'Invalid request ID. Please return to Approvals and select a request.';
 } else {
-    $fields = 'request_id,display_id,concern,description,category,priority,approval_status,rejection_reason,date_reported,specific_area,equipment_id,facility_id,floor_id,room_id,reported_by,created_at,image_path';
+    $fields = 'request_id,display_id,concern,description,category,priority,approval_status,rejection_reason,date_reported,specific_area,equipment_id,facility_id,floor_id,room_id,reported_by,created_at,image_path,reported_location,reported_floor,reported_equipment,asset_review_required,external_facility_name';
     $result = secretaryDetailsRest('/rest/v1/maintenance_requests?display_id=eq.' . rawurlencode($requestId) . '&select=' . rawurlencode($fields) . '&limit=1');
     if (!$result['ok'] || !is_array($result['data'])) {
         $pageError = 'Could not load this request from the database. Please try again.';
@@ -86,6 +86,12 @@ if ($request && !empty($request['date_reported'])) {
     catch (Throwable $e) { $date = (string)$request['date_reported']; }
 }
 $facilityDisplay = is_array($lookups['facility']) ? 'Unknown facility' : $lookups['facility'];
+if (!empty($request['external_facility_name'])) $facilityDisplay = $request['external_facility_name'];
+if (!empty($request['asset_review_required'])) {
+    $facilityDisplay = 'Needs asset review · '.implode(' · ',array_filter([
+        $request['reported_floor']??null,$request['reported_location']??$facilityDisplay,$request['reported_equipment']??null,
+    ]));
+}
 if ($request && !empty($request['specific_area'])) $facilityDisplay .= ' — ' . $request['specific_area'];
 
 // Resolve the reported image like regular_request.php (private bucket-safe signed URL).

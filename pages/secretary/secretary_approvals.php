@@ -204,7 +204,7 @@ $loadError = '';
 
 $reqRes = approvalsRest(
 
-    '/rest/v1/maintenance_requests?select=request_id,display_id,concern,description,category,priority,approval_status,rejection_reason,date_reported,specific_area,equipment_id,facility_id,reported_by,created_at&order=created_at.desc'
+    '/rest/v1/maintenance_requests?select=request_id,display_id,concern,description,category,priority,approval_status,rejection_reason,date_reported,specific_area,equipment_id,facility_id,reported_by,created_at,reported_location,reported_floor,reported_equipment,asset_review_required,external_facility_name&order=created_at.desc'
 
 );
 
@@ -240,7 +240,12 @@ if (!$reqRes['ok'] || !is_array($reqRes['data'])) {
 
         $statusKey = strtolower($approval); // pending | approved | rejected
 
-        $facility = $facilities[$row['facility_id'] ?? ''] ?? 'Unknown facility';
+        $facility = $facilities[$row['facility_id'] ?? ''] ?? $row['external_facility_name'] ?? 'Unknown facility';
+        if (!empty($row['asset_review_required'])) {
+            $facility = 'Needs asset review · '.implode(' · ',array_filter([
+                $row['reported_floor']??null,$row['reported_location']??$facility,$row['reported_equipment']??null,
+            ]));
+        }
 
         if (!empty($row['specific_area'])) {
 

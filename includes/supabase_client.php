@@ -7,30 +7,11 @@ declare(strict_types=1);
  * Region: Singapore
  */
 
-$maintainTrackEnvValues = [];
-$maintainTrackEnvPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
-if (is_readable($maintainTrackEnvPath)) {
-    $parsedMaintainTrackEnv = parse_ini_file($maintainTrackEnvPath, false, INI_SCANNER_RAW);
-    if (is_array($parsedMaintainTrackEnv)) $maintainTrackEnvValues = $parsedMaintainTrackEnv;
-}
+require_once __DIR__ . '/environment.php';
 
-$maintainTrackConfigValue = static function (string $name, string $default = '') use (&$maintainTrackEnvValues): string {
-    $processValue = getenv($name);
-    if ($processValue !== false && trim($processValue) !== '') return trim($processValue);
-    return trim((string) ($maintainTrackEnvValues[$name] ?? $default));
-};
-
-define('SUPABASE_URL', $maintainTrackConfigValue('MAINTAINTRACK_SUPABASE_URL', 'https://etlpwxatuklwiesohoeo.supabase.co'));
-
-define(
-    'SUPABASE_ANON_KEY',
-    $maintainTrackConfigValue('MAINTAINTRACK_SUPABASE_ANON_KEY', 'sb_publishable_WuzMZ48r7XY-0fw0qyIywA_qr1e-6lS')
-);
-
-define(
-    'SUPABASE_SECRET_KEY',
-    $maintainTrackConfigValue('MAINTAINTRACK_SUPABASE_SECRET_KEY')
-);
+define('SUPABASE_URL', maintaintrack_env('MAINTAINTRACK_SUPABASE_URL'));
+define('SUPABASE_ANON_KEY', maintaintrack_env('MAINTAINTRACK_SUPABASE_ANON_KEY'));
+define('SUPABASE_SECRET_KEY', maintaintrack_env('MAINTAINTRACK_SUPABASE_SECRET_KEY'));
 
 define('SUPABASE_STORAGE_BUCKET', 'report-images');
 
