@@ -35,6 +35,7 @@ function maintain_backfill_request(string $method,string $path,?array $body=null
     curl_setopt_array($ch,$opts); $raw=curl_exec($ch); $status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE); $error=curl_error($ch); curl_close($ch);
     if ($raw===false) throw new RuntimeException('MaintainTrack Supabase request failed: '.$error);
     if ($status<200 || $status>=300) throw new RuntimeException('MaintainTrack Supabase returned HTTP '.$status.': '.substr((string)$raw,0,600));
+    if (trim($raw)==='') return [];
     $decoded=json_decode($raw,true); if (json_last_error()!==JSON_ERROR_NONE) throw new RuntimeException('MaintainTrack Supabase returned invalid JSON');
     return is_array($decoded)?$decoded:['value'=>$decoded];
 }
@@ -96,6 +97,7 @@ try {
     $jobs=['maintain_requests','maintain_updates'];
     if($reset) foreach($jobs as $job) maintain_backfill_request('POST','rest/v1/rpc/maintain_reset_central_backfill',['p_job_name'=>$job]);
     foreach($jobs as $job) do {$n=maintain_backfill_job($job,$limit);} while($n===$limit);
+    if ($reset) maintain_backfill_request('POST','rest/v1/rpc/maintain_requeue_tombstones',['p_reconcile'=>true]);
     fwrite(STDOUT,"MaintainTrack snapshot backfill enqueued. The scheduled publisher will deliver pending events to Central.\n");
 } catch(Throwable $error) {
     error_log('MaintainTrack Central backfill failed: '.$error->getMessage());

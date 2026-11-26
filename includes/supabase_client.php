@@ -24,17 +24,11 @@ function maintaintrack_env(string $name, string $default = ''): string
  * Region: Singapore
  */
 
-define('SUPABASE_URL', maintaintrack_env('MAINTAINTRACK_SUPABASE_URL', 'https://etlpwxatuklwiesohoeo.supabase.co'));
+require_once __DIR__ . '/environment.php';
 
-define(
-    'SUPABASE_ANON_KEY',
-    maintaintrack_env('MAINTAINTRACK_SUPABASE_ANON_KEY', 'sb_publishable_WuzMZ48r7XY-0fw0qyIywA_qr1e-6lS')
-);
-
-define(
-    'SUPABASE_SECRET_KEY',
-    maintaintrack_env('MAINTAINTRACK_SUPABASE_SECRET_KEY')
-);
+define('SUPABASE_URL', maintaintrack_env('MAINTAINTRACK_SUPABASE_URL'));
+define('SUPABASE_ANON_KEY', maintaintrack_env('MAINTAINTRACK_SUPABASE_ANON_KEY'));
+define('SUPABASE_SECRET_KEY', maintaintrack_env('MAINTAINTRACK_SUPABASE_SECRET_KEY'));
 
 define('SUPABASE_STORAGE_BUCKET', 'report-images');
 

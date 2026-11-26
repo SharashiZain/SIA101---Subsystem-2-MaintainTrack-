@@ -1,19 +1,9 @@
 <?php
 declare(strict_types=1);
 
-function mt_publisher_env(string $name): string
-{
-    static $fileValues = null;
-    if ($fileValues === null) {
-        $parsed = @parse_ini_file(dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env', false, INI_SCANNER_RAW);
-        $fileValues = is_array($parsed) ? $parsed : [];
-    }
-    $value = getenv($name);
-    if ($value !== false && trim((string) $value) !== '') return trim((string) $value);
-    return trim((string) ($fileValues[$name] ?? ''));
-}
+require_once __DIR__ . '/../includes/environment.php';
 
-function mt_publisher_request(string $url, string $method, array $headers, ?array $body = null): array
+function mt_publisher_request(string $url, string $method, array $headers, ?array $body = null): mixed
 {
     if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL is required');
     $handle = curl_init($url);
@@ -30,19 +20,18 @@ function mt_publisher_request(string $url, string $method, array $headers, ?arra
     if ($response === false || $status < 200 || $status >= 300) {
         throw new RuntimeException($response === false ? $error : 'HTTP ' . $status);
     }
-    $decoded = json_decode($response, true);
-    return is_array($decoded) ? $decoded : [];
+    return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 }
 
 function mt_publish_central_outbox(int $limit = 20): int
 {
-    $central = rtrim(mt_publisher_env('CENTRAL_API_BASE_URL'), '/');
-    $centralToken = mt_publisher_env('MAINTAINTRACK_API_TOKEN');
-    $supabase = rtrim(mt_publisher_env('MAINTAINTRACK_SUPABASE_URL'), '/');
-    $secret = mt_publisher_env('MAINTAINTRACK_SUPABASE_SECRET_KEY');
+    $central = rtrim(maintaintrack_env('CENTRAL_API_BASE_URL'), '/');
+    $centralToken = maintaintrack_env('MAINTAINTRACK_API_TOKEN');
+    $supabase = rtrim(maintaintrack_env('MAINTAINTRACK_SUPABASE_URL'), '/');
+    $secret = maintaintrack_env('MAINTAINTRACK_SUPABASE_SECRET_KEY');
     $centralParts = parse_url($central);
     $supabaseParts = parse_url($supabase);
-    $localHttp = strtolower(mt_publisher_env('LOCAL_STAGING_ALLOW_HTTP')) === 'true';
+    $localHttp = strtolower(maintaintrack_env('LOCAL_STAGING_ALLOW_HTTP')) === 'true';
     $centralLocal = $localHttp && is_array($centralParts) && strtolower((string) ($centralParts['scheme'] ?? '')) === 'http' && in_array(strtolower((string) ($centralParts['host'] ?? '')), ['127.0.0.1', 'localhost', '::1'], true);
     $supabaseLocal = $localHttp && is_array($supabaseParts) && strtolower((string) ($supabaseParts['scheme'] ?? '')) === 'http' && in_array(strtolower((string) ($supabaseParts['host'] ?? '')), ['127.0.0.1', 'localhost', '::1'], true);
     if ((!str_starts_with($central, 'https://') && !$centralLocal) || $centralToken === '' || (!str_starts_with($supabase, 'https://') && !$supabaseLocal) || $secret === '') {
@@ -50,36 +39,35 @@ function mt_publish_central_outbox(int $limit = 20): int
     }
     $sbHeaders = ['apikey: ' . $secret, 'Accept: application/json', 'Content-Type: application/json'];
     if (!str_starts_with($secret, 'sb_secret_')) $sbHeaders[] = 'Authorization: Bearer ' . $secret;
-    $query = http_build_query(['select' => 'event_id,payload,attempts', 'delivered_at' => 'is.null',
-        'or' => '(next_attempt_at.is.null,next_attempt_at.lte.' . gmdate('c') . ')',
-        'order' => 'created_at.asc', 'limit' => (string) max(1, min(50, $limit))], '', '&', PHP_QUERY_RFC3986);
-    $rows = mt_publisher_request($supabase . '/rest/v1/integration_outbox?' . $query, 'GET', $sbHeaders);
+    $workerId = vsprintf('%s%s-%s-%s-%s-%s%s%s',str_split(bin2hex(random_bytes(16)),4));
+    $rpc = $supabase . '/rest/v1/rpc/';
     $published = 0;
-    foreach ($rows as $row) {
+    for ($index=0; $index<max(1,min(50,$limit)); $index++) {
+        $claimed = mt_publisher_request($rpc . 'maintain_claim_outbox', 'POST', $sbHeaders, [
+            'p_worker'=>$workerId, 'p_limit'=>1,
+        ]);
+        if (!is_array($claimed)) throw new RuntimeException('Unexpected maintain outbox claim result');
+        if ($claimed === []) break;
+        $row = $claimed[0];
         $id = (string) ($row['event_id'] ?? '');
         $event = $row['payload'] ?? null;
+        $failure = null;
         try {
             if ($id === '' || !is_array($event)) throw new RuntimeException('Malformed local outbox row');
-            mt_publisher_request($central . '/api/v1/events', 'POST', [
+            $result = mt_publisher_request($central . '/api/v1/events', 'POST', [
                 'Authorization: Bearer ' . $centralToken, 'Accept: application/json', 'Content-Type: application/json',
             ], $event);
-            mt_publisher_request($supabase . '/rest/v1/integration_outbox?event_id=eq.' . rawurlencode($id), 'PATCH', $sbHeaders, [
-                'delivered_at' => gmdate('c'), 'attempts' => (int) ($row['attempts'] ?? 0) + 1,
-                'last_error' => null, 'next_attempt_at' => null,
-            ]);
-            $published++;
+            if (!is_array($result) || ($result['accepted']??false)!==true) throw new RuntimeException('Central did not confirm event acceptance');
         } catch (Throwable $error) {
-            $attempts = (int) ($row['attempts'] ?? 0) + 1;
-            $delay = min(3600, 15 * (2 ** min(7, max(0, $attempts - 1))));
-            if ($id !== '') {
-                mt_publisher_request($supabase . '/rest/v1/integration_outbox?event_id=eq.' . rawurlencode($id), 'PATCH', $sbHeaders, [
-                    'attempts' => $attempts, 'last_error' => substr($error->getMessage(), 0, 400),
-                    'next_attempt_at' => gmdate('c', time() + $delay),
-                ]);
-            }
-            error_log('MaintainTrack Central outbox publish failed: ' . $error->getMessage());
-            break;
+            $failure = substr($error->getMessage(),0,400);
+            error_log('MaintainTrack Central outbox publish failed: ' . $failure);
         }
+        $saved = mt_publisher_request($rpc . 'maintain_finish_outbox','POST',$sbHeaders,[
+            'p_worker'=>$workerId,'p_event'=>$id,'p_error'=>$failure,
+        ]);
+        if ($saved !== true) throw new RuntimeException('MaintainTrack outbox lease could not be completed');
+        if ($failure !== null) break;
+        $published++;
     }
     return $published;
 }
